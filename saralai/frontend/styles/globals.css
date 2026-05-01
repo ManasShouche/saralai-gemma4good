@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --paper: #FAF7F2;
+  --paper-warm: #F4EFE7;
+  --ink: #161513;
+  --ink-soft: #3D3A36;
+  --muted: #7A736C;
+  --hairline: rgba(20,18,16,0.08);
+  --card: #FFFFFF;
+  --slate: #19181A;
+  --slate-soft: #26242A;
+  --ok: #2F7D4F;
+  --warn: #C77A20;
+  --accent: #D9542B;
+  --accent-soft: #FBE9DD;
+  --accent-deep: #A23A18;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-jakarta), 'Inter', var(--font-kannada), var(--font-devanagari), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--paper);
+  color: var(--ink);
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Minimum tap target for accessibility */
+button, a, [role="button"] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* PWA standalone styles */
+@media (display-mode: standalone) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Blinking cursor animation */
+@keyframes sBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.blink {
+  animation: sBlink 1s steps(2) infinite;
+}
