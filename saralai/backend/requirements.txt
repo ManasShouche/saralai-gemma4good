@@ -1,0 +1,9 @@
+fastapi==0.110.0
+uvicorn[standard]==0.27.1
+ollama==0.1.7
+python-multipart==0.0.9
+reportlab==4.1.0
+pypdf2==3.0.1
+sqlite-utils==3.35
+pillow==10.2.0
+sse-starlette==2.0.0
