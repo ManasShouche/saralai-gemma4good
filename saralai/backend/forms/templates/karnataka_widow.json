@@ -1,0 +1,20 @@
+{
+    "template_pdf": null,
+    "title": "Karnataka Widow Pension (Sandhya Suraksha) - Application Form",
+    "scheme_id": "ka_widow_pension",
+    "fields": [
+        {"key": "name", "page": 0, "x": 120, "y": 720, "size": 11, "label": "Full Name"},
+        {"key": "dob", "page": 0, "x": 120, "y": 690, "size": 11, "label": "Date of Birth"},
+        {"key": "gender", "page": 0, "x": 120, "y": 660, "size": 11, "label": "Gender"},
+        {"key": "aadhaar_number", "page": 0, "x": 120, "y": 630, "size": 11, "label": "Aadhaar Number"},
+        {"key": "address", "page": 0, "x": 120, "y": 600, "size": 10, "label": "Address"},
+        {"key": "district", "page": 0, "x": 120, "y": 570, "size": 11, "label": "District"},
+        {"key": "state", "page": 0, "x": 120, "y": 540, "size": 11, "label": "State"},
+        {"key": "marital_status", "page": 0, "x": 120, "y": 510, "size": 11, "label": "Marital Status"},
+        {"key": "ration_category", "page": 0, "x": 120, "y": 480, "size": 11, "label": "Ration Card Category"},
+        {"key": "spouse_death_date", "page": 0, "x": 120, "y": 450, "size": 11, "label": "Date of Spouse's Death"},
+        {"key": "bank_account", "page": 0, "x": 120, "y": 420, "size": 11, "label": "Bank Account Number"},
+        {"key": "ifsc_code", "page": 0, "x": 120, "y": 390, "size": 11, "label": "IFSC Code"},
+        {"key": "taluk", "page": 0, "x": 120, "y": 360, "size": 11, "label": "Taluk"}
+    ]
+}
