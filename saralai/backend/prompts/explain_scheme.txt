@@ -1,0 +1,11 @@
+Generate a clear explanation of why this user qualifies (or doesn't quite qualify) for this scheme.
+
+User profile: {profile_json}
+User narrative: {narrative_text}
+Scheme: {scheme_json}
+
+Write in {language}. Keep it to 2 sentences max. State the specific eligibility clauses that match (or don't). Avoid bureaucratic terminology.
+
+If a required document is missing, flag it explicitly at the end with the ⚠ symbol.
+
+Output only the explanation text. No JSON. No quotes.
