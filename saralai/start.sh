@@ -91,6 +91,7 @@ fi
 echo "  Both services running. Press Ctrl+C to stop."
 echo ""
 
-# Trap Ctrl+C and kill both processes cleanly
-trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; exit 0" INT TERM
+# Trap Ctrl+C, terminal close, and script exit — kill both processes cleanly
+cleanup() { kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; }
+trap cleanup INT TERM EXIT
 wait

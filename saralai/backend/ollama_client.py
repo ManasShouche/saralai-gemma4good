@@ -16,6 +16,7 @@ import time
 from typing import Callable, Optional
 
 import ollama
+from faster_whisper import WhisperModel
 
 # Configuration
 MODEL = os.getenv("OLLAMA_MODEL", "gemma4:e4b")
@@ -118,46 +119,57 @@ def extract_fields(image_bytes: bytes, doc_type: str) -> dict:
     return fields
 
 
+# Lazy-loaded Whisper model — initialized on first transcription call.
+# Using "small" for a good balance of accuracy and speed on CPU.
+_whisper_model: Optional[WhisperModel] = None
+
+
+def get_whisper_model() -> WhisperModel:
+    """Return a cached WhisperModel, creating it on first call."""
+    global _whisper_model
+    if _whisper_model is None:
+        _whisper_model = WhisperModel("small", device="cpu", compute_type="int8")
+    return _whisper_model
+
+
 def transcribe_audio(audio_bytes: bytes, language: str = "auto") -> dict:
     """
-    Transcribe audio using Gemma 4 native ASR.
+    Transcribe audio using faster-whisper (local, offline, supports Hindi/Kannada).
+
+    Gemma 4 does not accept audio via its images field; this function uses
+    faster-whisper instead, which is already in requirements.txt and runs fully
+    on-device without any network calls.
 
     Args:
         audio_bytes: Raw audio bytes (WebM/WAV/MP3)
-        language: Language hint ('hi', 'kn', 'en', 'auto')
+        language: BCP-47 language code hint ('hi', 'kn', 'en') or 'auto' for
+                  automatic detection.
 
     Returns:
         Dict with transcript, language_detected, confidence, duration_sec
     """
-    import base64
-    audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
+    import tempfile
 
-    prompt = load_prompt("transcribe")
-    if language != "auto":
-        lang_names = {"hi": "Hindi", "kn": "Kannada", "en": "English"}
-        prompt += f"\n\nThe audio is in {lang_names.get(language, language)}."
+    model = get_whisper_model()
+    # Pass None to faster-whisper when the caller wants auto-detection.
+    lang = None if language == "auto" else language
 
-    response = ollama.chat(
-        model=MODEL,
-        messages=[
-            {"role": "user", "content": prompt, "images": [audio_b64]}
-        ],
-        format="json",
-        options={"temperature": 0.1},
-    )
+    # faster-whisper requires a file path, not raw bytes.
+    with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as f:
+        f.write(audio_bytes)
+        tmp_path = f.name
 
-    raw_text = response["message"]["content"]
     try:
-        result = json.loads(raw_text)
-    except json.JSONDecodeError:
-        result = {
-            "transcript": raw_text.strip(),
-            "language_detected": language,
-            "confidence": 0.5,
-            "duration_sec": 0,
+        segments, info = model.transcribe(tmp_path, language=lang, beam_size=5)
+        transcript = " ".join(seg.text for seg in segments).strip()
+        return {
+            "transcript": transcript,
+            "language_detected": info.language,
+            "confidence": round(float(info.language_probability), 2),
+            "duration_sec": round(info.duration, 1),
         }
-
-    return result
+    finally:
+        os.unlink(tmp_path)
 
 
 def run_agentic_loop(

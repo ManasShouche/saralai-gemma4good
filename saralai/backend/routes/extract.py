@@ -48,26 +48,33 @@ async def extract_document(
                     "data": json.dumps({"text": raw_text}),
                 }
 
-            # Stream each field as a separate SSE event
+            # Stream each field as a separate SSE event.
+            # The model returns a flat dict of field→value. Gemma 4 does not
+            # produce per-field confidence scores in its JSON output, so we use
+            # a fixed default of 0.9. If a future prompt revision causes the
+            # model to return {"field": {"value": ..., "confidence": ...}} dicts,
+            # the isinstance check below will pick that up automatically.
             field_count = 0
             for key, value in fields.items():
-                if value is not None:
-                    confidence = 0.9  # Default confidence; improve with model output
-                    # Lower confidence for certain fields
-                    if key in ("district", "address"):
-                        confidence = 0.85
-                    if key == "aadhaar_number":
-                        confidence = 0.95
+                if value is None:
+                    continue
 
-                    yield {
-                        "event": "field",
-                        "data": json.dumps({
-                            "key": key,
-                            "value": value,
-                            "confidence": confidence,
-                        }),
-                    }
-                    field_count += 1
+                # Support models that return {value, confidence} dicts per field.
+                if isinstance(value, dict) and "value" in value:
+                    confidence = float(value.get("confidence", 0.9))
+                    value = value["value"]
+                else:
+                    confidence = 0.9
+
+                yield {
+                    "event": "field",
+                    "data": json.dumps({
+                        "key": key,
+                        "value": value,
+                        "confidence": confidence,
+                    }),
+                }
+                field_count += 1
 
             elapsed = int((time.time() - start_time) * 1000)
             yield {

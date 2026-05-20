@@ -42,7 +42,7 @@ export default function ScanPage() {
   const [showRaw, setShowRaw] = useState(false);
   const [extractError, setExtractError] = useState<string | null>(null);
 
-  const handleCapture = async (blob: Blob) => {
+  const handleCapture = async (blob: Blob, docType: string = "aadhaar") => {
     if (scanState !== "camera") return; // prevent double-capture
     // Revoke previous blob URL to prevent memory leak
     setCapturedImage((prev) => { if (prev) URL.revokeObjectURL(prev); return prev; });
@@ -58,7 +58,7 @@ export default function ScanPage() {
     try {
       await extractDocument(
         blob,
-        "aadhaar",
+        docType,
         (field) => setFields((prev) => {
           const idx = prev.findIndex((f) => f.key === field.key);
           if (idx >= 0) {

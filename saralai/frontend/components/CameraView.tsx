@@ -11,8 +11,11 @@ const DOC_TABS: Record<Language, string[]> = {
   en: ["Aadhaar", "Ration", "Other"],
 };
 
+const DOC_TYPE_VALUES = ["aadhaar", "ration_card", "other"] as const;
+type DocTypeValue = (typeof DOC_TYPE_VALUES)[number];
+
 interface CameraViewProps {
-  onCapture: (blob: Blob) => void;
+  onCapture: (blob: Blob, docType: DocTypeValue) => void;
   onClose?: () => void;
   lang?: Language;
   docStatus?: "idle" | "detected";
@@ -66,8 +69,9 @@ export default function CameraView({
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     canvas.getContext("2d")?.drawImage(video, 0, 0);
+    const docType = DOC_TYPE_VALUES[activeTab] ?? "aadhaar";
     canvas.toBlob((blob) => {
-      if (blob) onCapture(blob);
+      if (blob) onCapture(blob, docType);
     }, "image/jpeg", 0.92);
   };
 

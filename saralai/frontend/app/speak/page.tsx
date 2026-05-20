@@ -29,6 +29,7 @@ export default function SpeakPage() {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const recordingStartRef = useRef<number>(0);
 
   useEffect(() => {
     return () => {
@@ -54,12 +55,15 @@ export default function SpeakPage() {
       src.connect(analyser);
       analyserRef.current = analyser;
 
-      // MediaRecorder — prefer opus for small file size
+      // MediaRecorder — prefer opus for small file size; fall through to
+      // audio/mp4 for Safari / some Android browsers that lack WebM support.
       const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
         ? "audio/webm;codecs=opus"
         : MediaRecorder.isTypeSupported("audio/webm")
         ? "audio/webm"
-        : "audio/ogg";
+        : MediaRecorder.isTypeSupported("audio/ogg")
+        ? "audio/ogg"
+        : "audio/mp4";
 
       chunksRef.current = [];
       const recorder = new MediaRecorder(stream, { mimeType });
@@ -76,9 +80,10 @@ export default function SpeakPage() {
         setIsRecording(false);
         setSeconds(0);
 
+        const durationMs = Date.now() - recordingStartRef.current;
         const blob = new Blob(chunksRef.current, { type: mimeType });
-        if (blob.size < 1000) {
-          // Too small — likely silence / tap-release too fast
+        if (blob.size === 0 || durationMs < 1500 || blob.size < 1000) {
+          // Too short or empty — tap-release too fast, or silent
           setMicError(
             lang === "kn"
               ? "ಸಾಕಷ್ಟು ಧ್ವನಿ ರೆಕಾರ್ಡ್ ಆಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ."
@@ -112,6 +117,7 @@ export default function SpeakPage() {
 
       mediaRecorderRef.current = recorder;
       recorder.start(250); // collect chunks every 250 ms
+      recordingStartRef.current = Date.now();
       setIsRecording(true);
       setSeconds(0);
       timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);

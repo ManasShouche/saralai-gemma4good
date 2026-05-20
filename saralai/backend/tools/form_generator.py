@@ -64,7 +64,14 @@ def generate_application_form(scheme_id: str, user_data: dict) -> dict:
 
 
 def _generate_from_template(template: dict, user_data: dict, output_path: str):
-    """Generate PDF using field coordinates from a template."""
+    """
+    Generate PDF using field coordinates from a template.
+
+    Template field specs use raw ReportLab point values (1 pt = 1/72 inch).
+    A4 height is ~841 pt so y=720 sits near the top, y=390 near the middle.
+    Labels are drawn to the left of the value/underline so the form is readable
+    without reference to the original blank.
+    """
     c = pdf_canvas.Canvas(output_path, pagesize=A4)
     width, height = A4
 
@@ -72,21 +79,67 @@ def _generate_from_template(template: dict, user_data: dict, output_path: str):
     c.setFont("Helvetica-Bold", 16)
     c.drawString(30 * mm, height - 30 * mm, template.get("title", "Application Form"))
 
-    # Fill fields at specified coordinates
-    c.setFont("Helvetica", 11)
+    # Separator line under title
+    c.setLineWidth(0.5)
+    c.line(30 * mm, height - 33 * mm, width - 30 * mm, height - 33 * mm)
+
+    # Track which page each field belongs to so we can call showPage() once
+    # per page transition rather than once per field.
+    current_page = 0
+
     for field_spec in template.get("fields", []):
         key = field_spec["key"]
+        # x/y are in raw points as stored in the template JSON.
         x = field_spec.get("x", 30 * mm)
         y = field_spec.get("y", height - 50 * mm)
         size = field_spec.get("size", 11)
+        label = field_spec.get("label", key.replace("_", " ").title())
+        page = field_spec.get("page", 0)
 
+        # Advance to the correct page if needed.
+        if page > current_page:
+            for _ in range(page - current_page):
+                c.showPage()
+                # Re-draw a continuation header on each new page.
+                c.setFont("Helvetica-Bold", 12)
+                c.drawString(
+                    30 * mm,
+                    height - 20 * mm,
+                    template.get("title", "Application Form") + " (continued)",
+                )
+                c.setLineWidth(0.5)
+                c.line(30 * mm, height - 23 * mm, width - 30 * mm, height - 23 * mm)
+            current_page = page
+
+        # Guard: if a field's y coordinate is too close to the bottom margin,
+        # push to a new page rather than printing off the edge.
+        if y < 25 * mm:
+            c.showPage()
+            current_page += 1
+            c.setFont("Helvetica-Bold", 12)
+            c.drawString(
+                30 * mm,
+                height - 20 * mm,
+                template.get("title", "Application Form") + " (continued)",
+            )
+            c.setLineWidth(0.5)
+            c.line(30 * mm, height - 23 * mm, width - 30 * mm, height - 23 * mm)
+            # Reposition the field near the top of the new page.
+            y = height - 40 * mm
+
+        # Draw label in bold, value (or blank line) in regular weight.
+        label_x = 30 * mm
+        value_x = x  # template x is the value start; label sits to the left.
+        c.setFont("Helvetica-Bold", size)
+        c.drawString(label_x, y, f"{label}:")
         c.setFont("Helvetica", size)
+        # Use .get() with default "" so missing keys never raise KeyError.
         value = user_data.get(key, "")
         if value:
-            c.drawString(x, y, str(value))
+            c.drawString(value_x, y, str(value))
         else:
-            # Draw underline for missing fields
-            c.line(x, y - 2, x + 150, y - 2)
+            # Blank underline so the applicant can hand-fill missing data.
+            c.line(value_x, y - 2, value_x + 150, y - 2)
 
     c.save()
 
@@ -128,18 +181,27 @@ def _generate_simple_form(scheme_id: str, user_data: dict, output_path: str):
 
     c.setFont("Helvetica", 11)
     for key, label in field_labels:
+        # Use .get() with default "" so missing keys never raise KeyError.
         value = user_data.get(key, "")
-        c.drawString(30 * mm, y_pos, f"{label}: ")
+        c.setFont("Helvetica-Bold", 11)
+        c.drawString(30 * mm, y_pos, f"{label}:")
+        c.setFont("Helvetica", 11)
         if value:
             c.drawString(80 * mm, y_pos, str(value))
         else:
             c.line(80 * mm, y_pos - 2, 180 * mm, y_pos - 2)
         y_pos -= 8 * mm
 
-        # Page break if needed
+        # Page break: draw continuation header so multi-page forms look correct.
         if y_pos < 30 * mm:
             c.showPage()
             y_pos = height - 25 * mm
+            c.setFont("Helvetica-Bold", 12)
+            c.drawString(30 * mm, y_pos, "Government Scheme Application Form (continued)")
+            c.drawString(30 * mm, y_pos - 8 * mm, f"Scheme: {scheme_id}")
+            c.line(30 * mm, y_pos - 11 * mm, width - 30 * mm, y_pos - 11 * mm)
+            y_pos -= 20 * mm
+            # Restore body font before the next field is drawn.
             c.setFont("Helvetica", 11)
 
     # Signature section
