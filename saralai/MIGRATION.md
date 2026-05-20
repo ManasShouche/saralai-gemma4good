@@ -43,7 +43,7 @@ The frontend pages currently have inline UI logic. Please extract these into the
 3. Test the "Add to Home Screen" mechanism.
 
 ### Priority 3: Submission Deliverables
-1. Perform local End-to-End manual testing of the Rukmini Persona using `ollama pull gemma4:4b`.
+1. Perform local End-to-End manual testing of the Rukmini Persona using `ollama pull gemma4:e4b`.
 2. Draft the `WRITEUP.md` (1000-1200 words) according to Section 18 of the `CLAUDE.md` specification.
 3. Help the team script and prepare for the 2:30 demo video.
 4. Add the 2 required redacted Aadhaar images to `data/test_aadhaars/`.

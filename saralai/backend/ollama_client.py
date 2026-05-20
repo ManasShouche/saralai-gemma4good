@@ -19,7 +19,7 @@ import ollama
 from faster_whisper import WhisperModel
 
 # Configuration
-MODEL = os.getenv("OLLAMA_MODEL", "gemma4:4b")
+MODEL = os.getenv("OLLAMA_MODEL", "gemma4:e4b")
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 
 # Privacy: regex to find and mask Aadhaar numbers

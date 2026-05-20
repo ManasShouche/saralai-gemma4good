@@ -62,7 +62,7 @@ Screenshots:
 ### Step 1 — Pull the model
 
 ```bash
-ollama pull gemma4:4b
+ollama pull gemma4:e4b
 ```
 
 > ~3 GB download. Do this before the demo.
