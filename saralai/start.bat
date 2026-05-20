@@ -59,6 +59,9 @@ echo  On your phone: http://YOUR_IP:3000
 echo  (find your IP with: ipconfig)
 echo.
 
+echo  Clearing Next.js build cache...
+if exist "%FRONTEND_DIR%\.next" rmdir /s /q "%FRONTEND_DIR%\.next"
+
 start "SaralAI Frontend" cmd /k "cd /d "%FRONTEND_DIR%" && npm run dev"
 
 REM Poll until port 3000 is ready before opening browser
