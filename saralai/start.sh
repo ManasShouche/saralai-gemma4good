@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # SaralAI — one-command startup (Mac / Linux)
-set -e
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 BACKEND="$ROOT/backend"
@@ -41,7 +40,7 @@ fi
 echo "[2/4] Installing backend dependencies..."
 .venv/bin/pip install -q -r requirements.txt
 
-if [ ! -f "schemes.db" ]; then
+if [ ! -f "db/schemes.db" ]; then
   echo "[3/4] Seeding scheme database..."
   .venv/bin/python db/seed.py
 else
@@ -51,6 +50,7 @@ fi
 echo "[4/4] Starting backend on http://localhost:8000 ..."
 .venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --reload &
 BACKEND_PID=$!
+sleep 2
 
 # ── 3. Frontend ───────────────────────────────────────────────────────────────
 cd "$FRONTEND"
@@ -80,7 +80,7 @@ FRONTEND_PID=$!
 
 # Wait for port 3000, then open browser
 echo "  Waiting for frontend to start..."
-until nc -z localhost 3000 2>/dev/null; do sleep 1; done
+until curl -s http://localhost:3000 > /dev/null 2>&1; do sleep 1; done
 
 if command -v open &>/dev/null; then
   open http://localhost:3000          # macOS

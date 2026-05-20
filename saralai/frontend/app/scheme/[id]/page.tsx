@@ -72,7 +72,7 @@ export default function SchemeDetailPage() {
     setDownloading(true);
     try {
       let profile: Record<string, string> = {};
-      profile = JSON.parse(sessionStorage.getItem("saralai_profile") || "{}");
+      profile = JSON.parse(localStorage.getItem("saralai_profile") || "{}");
       const blob = await generateForm(id, profile);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

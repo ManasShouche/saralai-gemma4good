@@ -134,7 +134,7 @@ export default function SpeakPage() {
   }, []);
 
   const handleConfirm = () => {
-    sessionStorage.setItem("saralai_narrative", transcript);
+    localStorage.setItem("saralai_narrative", transcript);
     router.push("/results");
   };
 

@@ -35,6 +35,7 @@ if not exist "schemes.db" (
 
 echo [4/4] Starting backend on http://localhost:8000 ...
 start "SaralAI Backend" cmd /k ".venv\Scripts\uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+timeout /t 3 /nobreak >nul
 
 REM ── 3. Frontend setup ────────────────────────────────────────────────────────
 cd /d "%~dp0frontend"

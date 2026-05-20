@@ -69,8 +69,8 @@ export default function ResultsPage() {
     let profile: Record<string, string> = {};
     let narrative = "";
     try {
-      profile = JSON.parse(sessionStorage.getItem("saralai_profile") || "{}");
-      narrative = sessionStorage.getItem("saralai_narrative") || "";
+      profile = JSON.parse(localStorage.getItem("saralai_profile") || "{}");
+      narrative = localStorage.getItem("saralai_narrative") || "";
     } catch {}
 
     const start = Date.now();

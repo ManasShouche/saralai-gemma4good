@@ -89,7 +89,7 @@ export default function ScanPage() {
 
   const handleConfirm = () => {
     const profile = Object.fromEntries(fields.map((f) => [f.key, f.value]));
-    sessionStorage.setItem("saralai_profile", JSON.stringify(profile));
+    localStorage.setItem("saralai_profile", JSON.stringify(profile));
     // Persist name so home screen can greet the user by name
     if (profile.name) localStorage.setItem("saralai_user_name", profile.name);
     router.push("/speak");
