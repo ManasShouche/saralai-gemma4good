@@ -19,8 +19,26 @@ import ollama
 from faster_whisper import WhisperModel
 
 # Configuration
-MODEL = os.getenv("OLLAMA_MODEL", "gemma4:e4b")
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+
+def _resolve_model() -> str:
+    """Return the model to use, falling back to gemma4:e4b if configured tag is absent."""
+    configured = os.getenv("OLLAMA_MODEL", "gemma4:e4b")
+    try:
+        available = [m.model for m in ollama.list().models]
+        if configured in available:
+            return configured
+        # Configured tag not found — try the canonical tag
+        fallback = "gemma4:e4b"
+        if fallback in available:
+            print(f"[SaralAI] OLLAMA_MODEL={configured!r} not found; using {fallback!r}")
+            return fallback
+        # Return whatever is configured and let Ollama surface a clear error
+        return configured
+    except Exception:
+        return configured
+
+MODEL = _resolve_model()
 
 # Privacy: regex to find and mask Aadhaar numbers
 AADHAAR_PATTERN = re.compile(r"\b(\d{4})\s*(\d{4})\s*(\d{4})\b")
