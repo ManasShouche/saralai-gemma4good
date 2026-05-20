@@ -12,6 +12,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from ollama_client import MODEL
 from routes.debug import router as debug_router
 from routes.extract import router as extract_router
 from routes.transcribe import router as transcribe_router
@@ -26,7 +27,7 @@ async def lifespan(app: FastAPI):
     # Startup: verify Ollama connectivity
     print("[SaralAI] Backend starting up...")
     print(f"[SaralAI] Ollama host: {os.getenv('OLLAMA_HOST', 'http://localhost:11434')}")
-    print(f"[SaralAI] Model: {os.getenv('OLLAMA_MODEL', 'gemma4:e4b')}")
+    print(f"[SaralAI] Model: {MODEL}")
     yield
     # Shutdown
     print("[SaralAI] Backend shutting down...")
@@ -63,5 +64,5 @@ async def health_check():
     return {
         "status": "ok",
         "service": "saralai-backend",
-        "model": os.getenv("OLLAMA_MODEL", "gemma4:e4b"),
+        "model": MODEL,
     }
