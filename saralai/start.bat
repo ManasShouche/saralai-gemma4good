@@ -1,5 +1,11 @@
 @echo off
 title SaralAI — Starting up...
+setlocal
+
+set "ROOT=%~dp0"
+set "BACKEND_DIR=%~dp0backend"
+set "FRONTEND_DIR=%~dp0frontend"
+
 echo.
 echo  ===================================
 echo   SaralAI - Welfare Access Agent
@@ -16,7 +22,7 @@ if errorlevel 1 (
 )
 
 REM ── 2. Backend setup ─────────────────────────────────────────────────────────
-cd /d "%~dp0backend"
+cd /d "%BACKEND_DIR%"
 
 if not exist ".venv\Scripts\python.exe" (
     echo [1/4] Creating Python virtual environment...
@@ -34,11 +40,11 @@ if not exist "schemes.db" (
 )
 
 echo [4/4] Starting backend on http://localhost:8000 ...
-start "SaralAI Backend" /d "%~dp0backend" cmd /k ".venv\Scripts\uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+start "SaralAI Backend" cmd /k "cd /d "%BACKEND_DIR%" && .venv\Scripts\uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
 timeout /t 3 /nobreak >nul
 
 REM ── 3. Frontend setup ────────────────────────────────────────────────────────
-cd /d "%~dp0frontend"
+cd /d "%FRONTEND_DIR%"
 
 if not exist "node_modules" (
     echo [5/5] Installing frontend dependencies (first run only)...
@@ -53,7 +59,7 @@ echo  On your phone: http://YOUR_IP:3000
 echo  (find your IP with: ipconfig)
 echo.
 
-start "SaralAI Frontend" /d "%~dp0frontend" cmd /k "npm run dev"
+start "SaralAI Frontend" cmd /k "cd /d "%FRONTEND_DIR%" && npm run dev"
 
 REM Poll until port 3000 is ready before opening browser
 echo  Waiting for frontend to start...
