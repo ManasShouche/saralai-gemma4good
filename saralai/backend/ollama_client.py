@@ -98,8 +98,8 @@ def extract_fields(image_bytes: bytes, doc_type: str) -> dict:
         options={"temperature": 0.1},
     )
 
-    # Parse the JSON response
-    raw_text = response["message"]["content"]
+    # Parse the JSON response (ollama>=0.4 returns objects, not dicts)
+    raw_text = response.message.content
     try:
         fields = json.loads(raw_text)
     except json.JSONDecodeError:
@@ -231,17 +231,16 @@ def run_agentic_loop(
             if time.time() - start_time > timeout:
                 break
 
-            msg = chunk.get("message", {})
+            msg = chunk.message
 
             # Stream thinking tokens
-            if msg.get("content"):
-                content = msg["content"]
-                assistant_content += content
-                stream_callback("thinking", {"text": content})
+            if msg.content:
+                assistant_content += msg.content
+                stream_callback("thinking", {"text": msg.content})
 
             # Collect tool calls
-            if msg.get("tool_calls"):
-                tool_calls.extend(msg["tool_calls"])
+            if msg.tool_calls:
+                tool_calls.extend(msg.tool_calls)
 
         # Append assistant message to history
         if assistant_content or tool_calls:
@@ -262,14 +261,14 @@ def run_agentic_loop(
 
         # Execute tool calls
         for call in tool_calls:
-            fn_name = call["function"]["name"]
-            fn_args_raw = call["function"]["arguments"]
+            fn_name = call.function.name
+            fn_args_raw = call.function.arguments
 
-            # Parse arguments
+            # arguments is already a dict in ollama>=0.4; guard for str just in case
             if isinstance(fn_args_raw, str):
                 fn_args = json.loads(fn_args_raw)
             else:
-                fn_args = fn_args_raw
+                fn_args = fn_args_raw or {}
 
             # Emit visible tool-call event so UI shows function invocations
             display = fn_name.replace("_", " ")
@@ -279,6 +278,8 @@ def run_agentic_loop(
             elif "district" in fn_args:
                 arg_hint = f" → {fn_args['district']}"
             stream_callback("thinking", {"text": f"\n⟳ tool: {display}{arg_hint}\n"})
+
+            call_id = getattr(call, "id", None) or f"call_{fn_name}"
 
             # Execute the tool
             if fn_name in tool_registry:
@@ -294,14 +295,14 @@ def run_agentic_loop(
                 # Add tool result to message history
                 messages.append({
                     "role": "tool",
-                    "tool_call_id": call.get("id", f"call_{fn_name}"),
+                    "tool_call_id": call_id,
                     "content": json.dumps(result, ensure_ascii=False),
                 })
             else:
                 # Unknown tool — return error to model
                 messages.append({
                     "role": "tool",
-                    "tool_call_id": call.get("id", f"call_{fn_name}"),
+                    "tool_call_id": call_id,
                     "content": json.dumps({"error": f"Unknown tool: {fn_name}"}),
                 })
 
