@@ -34,7 +34,7 @@ if not exist "schemes.db" (
 )
 
 echo [4/4] Starting backend on http://localhost:8000 ...
-start "SaralAI Backend" cmd /k ".venv\Scripts\uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+start "SaralAI Backend" /d "%~dp0backend" cmd /k ".venv\Scripts\uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
 timeout /t 3 /nobreak >nul
 
 REM ── 3. Frontend setup ────────────────────────────────────────────────────────
@@ -53,7 +53,7 @@ echo  On your phone: http://YOUR_IP:3000
 echo  (find your IP with: ipconfig)
 echo.
 
-start "SaralAI Frontend" cmd /k "npm run dev"
+start "SaralAI Frontend" /d "%~dp0frontend" cmd /k "npm run dev"
 
 REM Poll until port 3000 is ready before opening browser
 echo  Waiting for frontend to start...
