@@ -115,8 +115,15 @@ async def find_schemes(request: FindSchemesRequest):
                     timeout=60,
                 )
             except Exception as e:
+                msg = str(e)
+                if "more system memory" in msg or "out of memory" in msg.lower():
+                    msg = "Not enough RAM to run Gemma 4. Close other apps to free up memory and try again."
+                elif "model" in msg.lower() and ("not found" in msg.lower() or "does not exist" in msg.lower()):
+                    msg = "Ollama model not found. Run: ollama pull gemma4:e4b"
+                elif "connection" in msg.lower() or "refused" in msg.lower():
+                    msg = "Cannot reach Ollama. Make sure it is running (ollama serve)."
                 loop.call_soon_threadsafe(
-                    queue.put_nowait, ("error", {"message": str(e)})
+                    queue.put_nowait, ("error", {"message": msg})
                 )
             finally:
                 loop.call_soon_threadsafe(queue.put_nowait, None)  # sentinel

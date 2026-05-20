@@ -86,9 +86,16 @@ async def extract_document(
             }
 
         except Exception as e:
+            msg = str(e)
+            if "more system memory" in msg or "out of memory" in msg.lower():
+                msg = "Not enough RAM to run Gemma 4. Close other apps to free up memory and try again."
+            elif "model" in msg.lower() and ("not found" in msg.lower() or "does not exist" in msg.lower()):
+                msg = f"Ollama model not found. Run: ollama pull gemma4:e4b"
+            elif "connection" in msg.lower() or "refused" in msg.lower():
+                msg = "Cannot reach Ollama. Make sure it is running (ollama serve)."
             yield {
                 "event": "error",
-                "data": json.dumps({"message": str(e)}),
+                "data": json.dumps({"message": msg}),
             }
 
     return EventSourceResponse(event_generator())
