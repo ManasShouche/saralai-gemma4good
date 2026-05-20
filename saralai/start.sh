@@ -15,7 +15,7 @@ echo ""
 if ! command -v ollama &>/dev/null; then
   echo "[ERROR] Ollama not found."
   echo "        Install from https://ollama.com/download, then run:"
-  echo "        ollama pull gemma4:e4b-instruct-q4_K_M"
+  echo "        ollama pull gemma4:4b"
   exit 1
 fi
 

@@ -4,7 +4,7 @@
 >
 > Scan your Aadhaar card with your phone camera. Speak about your situation in Kannada, Hindi, or English. Get matched to schemes you qualify for, with a pre-filled PDF form ready to take to the office.
 >
-> Runs entirely on-device. Nothing leaves your phone. Powered by **Gemma 4 E4B** via Ollama.
+> Runs entirely on-device. Nothing leaves your phone. Powered by **Gemma 4 4B** via Ollama.
 
 ---
 
@@ -62,7 +62,7 @@ Screenshots:
 ### Step 1 — Pull the model
 
 ```bash
-ollama pull gemma4:e4b
+ollama pull gemma4:4b
 ```
 
 > ~3 GB download. Do this before the demo.
@@ -200,7 +200,7 @@ ip addr show                 # Linux
 
 ## What Gemma 4 Does
 
-Gemma 4 E4B handles three distinct tasks in this pipeline:
+Gemma 4 4B handles three distinct tasks in this pipeline:
 
 ### 1. Vision OCR — `/api/extract-doc`
 A JPEG of an Aadhaar card is sent directly to Gemma 4's vision encoder. A structured JSON extraction prompt returns name, date of birth, gender, district, state, and UID with field-level confidence scores. Fields are streamed to the UI via SSE as they arrive — users see their data appear live rather than waiting.
@@ -300,7 +300,7 @@ saralai/
 
 | Layer | Technology |
 |-------|-----------|
-| AI model | Gemma 4 E4B via Ollama |
+| AI model | Gemma 4 4B via Ollama |
 | Backend | FastAPI 0.110, Python 3.11, uvicorn |
 | Streaming | Server-Sent Events (SSE) via sse-starlette |
 | Database | SQLite via sqlite-utils |

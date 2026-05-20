@@ -10,7 +10,7 @@ REM ── 1. Check Ollama ─────────────────�
 where ollama >nul 2>&1
 if errorlevel 1 (
     echo [ERROR] Ollama not found. Install from https://ollama.com then run:
-    echo         ollama pull gemma4:e4b
+    echo         ollama pull gemma4:4b
     pause
     exit /b 1
 )
