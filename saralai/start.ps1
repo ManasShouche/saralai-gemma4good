@@ -70,6 +70,23 @@ if ($ramGB -gt 0 -and $ramGB -le 10) {
     Write-Host ""
 }
 
+# ── llama.cpp backend detection ──────────────────────────────────────────────
+if ($env:SARALAI_BACKEND -eq "llamacpp") {
+    Write-Host "  Using llama.cpp direct backend for edge optimization" -ForegroundColor Cyan
+    $llama_check = & $venvPy -c "import llama_cpp" 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  Installing llama-cpp-python..." -ForegroundColor Yellow
+        & $pip install -q llama-cpp-python
+    }
+    if (-not $env:LLAMACPP_MODEL_PATH) {
+        Write-Host ""
+        Write-Host "  ⚠  LLAMACPP_MODEL_PATH not set." -ForegroundColor Yellow
+        Write-Host "     Set it to your Gemma 4 GGUF file path, e.g.:"
+        Write-Host "     `$env:LLAMACPP_MODEL_PATH = 'C:\models\gemma-4-e4b-it-Q4_K_M.gguf'"
+        Write-Host ""
+    }
+}
+
 Write-Host "[4/4] Starting backend on http://localhost:8000 ..." -ForegroundColor Yellow
 $backendJob = Start-Process -FilePath $uvicorn -ArgumentList "main:app --host 0.0.0.0 --port 8000 --reload" -WorkingDirectory $backend -PassThru -WindowStyle Normal
 

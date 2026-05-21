@@ -45,6 +45,37 @@ set OLLAMA_NUM_PARALLEL=1
 set OLLAMA_MAX_LOADED_MODELS=1
 set OLLAMA_FLASH_ATTENTION=1
 
+REM ── Detect RAM and warn if low ────────────────────────────────────────────
+for /f "skip=1" %%A in ('wmic computersystem get TotalPhysicalMemory 2^>nul') do (
+    set /a "RAM_GB=%%A / 1073741824" 2>nul
+    goto :ram_done
+)
+:ram_done
+if defined RAM_GB (
+    if %RAM_GB% LEQ 10 (
+        echo.
+        echo   WARNING: Low RAM detected ^(%RAM_GB%GB^).
+        echo   The backend will auto-select a smaller model if available.
+        echo   For best results: ollama pull gemma4:e2b
+        echo.
+    )
+)
+
+REM ── llama.cpp backend detection ───────────────────────────────────────────
+if "%SARALAI_BACKEND%"=="llamacpp" (
+    echo   Using llama.cpp direct backend for edge optimization
+    .venv\Scripts\python -c "import llama_cpp" 2>nul
+    if errorlevel 1 (
+        echo   Installing llama-cpp-python...
+        .venv\Scripts\pip install -q llama-cpp-python
+    )
+    if not defined LLAMACPP_MODEL_PATH (
+        echo   WARNING: LLAMACPP_MODEL_PATH not set.
+        echo   Set it to your Gemma 4 GGUF file path, e.g.:
+        echo   set LLAMACPP_MODEL_PATH=C:\models\gemma-4-e4b-it-Q4_K_M.gguf
+    )
+)
+
 echo [4/4] Starting backend on http://localhost:8000 ...
 start "SaralAI Backend" cmd /k "cd /d "%BACKEND_DIR%" && set OLLAMA_MODEL=gemma4:e4b && set OLLAMA_NUM_PARALLEL=1 && set OLLAMA_MAX_LOADED_MODELS=1 && set OLLAMA_FLASH_ATTENTION=1 && .venv\Scripts\uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
 timeout /t 3 /nobreak >nul
