@@ -8,6 +8,23 @@
 
 ---
 
+## What's New — Edge Optimization Update
+
+This release adds **adaptive hardware optimization** so SaralAI runs on devices ranging from a Raspberry Pi (4 GB) to a workstation (32 GB+), with no configuration needed.
+
+| Change | What it does |
+|--------|-------------|
+| **Adaptive memory config** (`memory_config.py`) | Auto-detects system RAM at startup and selects the right model variant (`e4b` vs `e2b`), context window (1024–8192), GPU offload level, and Whisper ASR size — no manual tuning |
+| **llama.cpp direct backend** (`llama_backend.py`) | Alternative to Ollama for edge devices. Loads GGUF model directly via `llama-cpp-python` with per-request context sizing, memory-mapped weights, flash attention, and dynamic GPU layer offloading |
+| **Ollama memory guards** | Sets `OLLAMA_NUM_PARALLEL=1`, `OLLAMA_MAX_LOADED_MODELS=1`, `OLLAMA_FLASH_ATTENTION=1` automatically to prevent OOM on constrained devices |
+| **3-tier hardware profiles** | **LOW** (≤8 GB): `gemma4:e2b`, 2048 ctx, CPU-only, Whisper tiny · **MEDIUM** (≤16 GB): `gemma4:e4b`, 4096 ctx, full GPU · **HIGH** (32 GB+): full model, 8192 ctx |
+| **Demo mode** (`?demo=true`) | Full UI walkthrough with pre-filled Rukmini persona data — no backend, camera, or mic required. For screenshots and presentations |
+| **Performance telemetry** | llama.cpp backend logs tokens/sec, time-to-first-token, and peak RSS for every request |
+
+See [Edge Optimization](#edge-optimization) below for full details.
+
+---
+
 ## The Problem
 
 India has over 3,000 central and state welfare schemes — widow pensions, free LPG, housing subsidies, education loans — yet two-thirds of eligible citizens never access them. The barrier is not eligibility. It is language, literacy, and bureaucratic opacity.
@@ -20,20 +37,13 @@ A 52-year-old widow in rural Karnataka named Rukmini speaks only Kannada. She ca
 
 ## How It Works
 
-```
-┌──────────┐     ┌──────────────┐     ┌──────────────────────────────┐
-│  1 SCAN  │────▶│  2  SPEAK    │────▶│  3  MATCH                    │
-│          │     │              │     │                              │
-│ Point    │     │ Hold mic.    │     │ Gemma 4 runs an agentic      │
-│ camera   │     │ "My husband  │     │ loop across 50 schemes.      │
-│ at       │     │  passed two  │     │ Matched schemes stream to    │
-│ Aadhaar  │     │  years ago.  │     │ screen with plain-language   │
-│ card.    │     │  I have a    │     │ explanations. Pre-filled     │
-│ Fields   │     │  BPL card."  │     │ PDF form generated and       │
-│ stream   │     │              │     │ ready to print.              │
-│ live.    │     │              │     │                              │
-└──────────┘     └──────────────┘     └──────────────────────────────┘
-```
+**Three steps. No typing. No English required.**
+
+1. **Scan** — Point your phone camera at your Aadhaar card. Gemma 4's vision model reads it live — name, DOB, gender, district stream onto the screen as they're extracted.
+
+2. **Speak** — Hold the mic button and describe your situation in Kannada or Hindi. *"My husband passed away two years ago. I have a BPL card."* Gemma 4 transcribes and understands in one pass.
+
+3. **Match** — Gemma 4 runs an agentic tool-calling loop across 50 welfare schemes. Matched schemes stream to the screen with plain-language eligibility reasons. Tap any scheme to download a pre-filled PDF application form.
 
 ---
 
@@ -351,6 +361,8 @@ saralai/
 ├── backend/
 │   ├── main.py               # FastAPI app + CORS + route registration
 │   ├── ollama_client.py      # Gemma 4 interface: extract / transcribe / agentic loop
+│   ├── llama_backend.py      # llama-cpp-python alternative for edge devices
+│   ├── memory_config.py      # Adaptive RAM detection + 3-tier hardware profiles
 │   ├── routes/
 │   │   ├── extract.py        # /api/extract-doc (SSE)
 │   │   ├── transcribe.py     # /api/transcribe
@@ -392,7 +404,7 @@ saralai/
 
 | Layer | Technology |
 |-------|-----------|
-| AI model | Gemma 4 4B via Ollama |
+| AI model | Gemma 4 4B via Ollama (default) or llama-cpp-python (edge) |
 | Backend | FastAPI 0.110, Python 3.11, uvicorn |
 | Streaming | Server-Sent Events (SSE) via sse-starlette |
 | Database | SQLite via sqlite-utils |
