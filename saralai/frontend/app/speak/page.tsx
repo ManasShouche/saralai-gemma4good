@@ -11,7 +11,7 @@ import HoldToTalk from "@/components/HoldToTalk";
 import Waveform from "@/components/Waveform";
 
 // Demo transcript for Rukmini persona — used when ?demo=true is in the URL
-const DEMO_TRANSCRIPT = "ನನ್ನ ಗಂಡ ಎರಡು ವರ್ಷಗಳ ಹಿಂದೆ ತೀರಿಕೊಂಡರು. ನನಗೆ ಇಬ್ಬರು ಮಕ್ಕಳಿದ್ದಾರೆ. ಯಾವುದೇ ಆದಾಯವಿಲ್ಲ.";
+const DEMO_TRANSCRIPT = "My husband passed away two years ago. I have two children. No income.";
 
 function SpeakPageInner() {
   const router = useRouter();
@@ -36,11 +36,11 @@ function SpeakPageInner() {
   const streamRef = useRef<MediaStream | null>(null);
   const recordingStartRef = useRef<number>(0);
 
-  // Demo mode: set Kannada as language for Rukmini persona
+  // Demo mode: set English as language
   useEffect(() => {
     if (isDemo) {
-      setLangState("kn");
-      localStorage.setItem("saralai_lang", "kn");
+      setLangState("en");
+      localStorage.setItem("saralai_lang", "en");
     }
   }, [isDemo]);
 
