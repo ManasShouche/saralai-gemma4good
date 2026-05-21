@@ -48,6 +48,7 @@ else
 fi
 
 echo "[4/4] Starting backend on http://localhost:8000 ..."
+export OLLAMA_MODEL=gemma4:e4b
 .venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --reload &
 BACKEND_PID=$!
 sleep 2
@@ -74,6 +75,9 @@ echo ""
 echo "  On your phone: http://$LAN_IP:3000"
 echo "  (tap browser menu → Add to Home Screen for PWA)"
 echo ""
+
+echo "  Clearing Next.js build cache..."
+rm -rf "$FRONTEND/.next"
 
 npm run dev &
 FRONTEND_PID=$!
