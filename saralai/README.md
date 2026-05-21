@@ -99,7 +99,7 @@ ollama pull gemma4:e4b
 
 ### Step 2 — Start everything
 
-#### Mac / Linux
+#### Mac / Linux (one command)
 
 ```bash
 cd saralai
@@ -107,38 +107,28 @@ chmod +x start.sh
 ./start.sh
 ```
 
-#### Windows
-
-```bat
-start.bat
-```
-
-Or PowerShell: `pwsh start.ps1`
-
 The script creates the venv, installs deps, seeds the database, starts both servers, and opens the browser automatically.
 
-<details>
-<summary>Manual setup (two terminals)</summary>
+#### Windows (two terminals)
 
 Terminal 1 — backend:
-```bash
-cd saralai/backend
-python3 -m venv .venv
-source .venv/bin/activate
+```bat
+cd saralai\backend
+python -m venv .venv
+.venv\Scripts\activate
 pip install -r requirements.txt
-python3 db/seed.py
+python db\seed.py
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 Terminal 2 — frontend:
-```bash
-cd saralai/frontend
+```bat
+cd saralai\frontend
 npm install --legacy-peer-deps
 npm run dev
 ```
 
 Open **http://localhost:3000**
-</details>
 
 ### Step 3 — Open on your phone (optional)
 
