@@ -78,15 +78,15 @@ export default function ReasoningStream({ thoughts, isStreaming = false, liveTok
       </p>
       <div className="flex flex-col gap-3">
         <AnimatePresence initial={false}>
-          {thoughts.map((t) => (
+          {thoughts.filter(Boolean).map((thought) => (
             <motion.div
-              key={t.id}
+              key={thought.id}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8, transition: { duration: 0.2 } }}
               transition={{ duration: 0.3 }}
             >
-              <ThoughtLine thought={t} />
+              <ThoughtLine thought={thought} />
             </motion.div>
           ))}
         </AnimatePresence>

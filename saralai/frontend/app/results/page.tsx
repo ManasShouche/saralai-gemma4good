@@ -175,7 +175,8 @@ function ResultsPageInner() {
       profile,
       narrative,
       langRef.current,
-      (text: string) => {
+      (text: string | undefined) => {
+        if (!text) return;
         // Accumulate tokens into buffer — flush on sentence boundaries or newlines
         liveBufferRef.current += text;
         setLiveToken(liveBufferRef.current);
@@ -190,6 +191,7 @@ function ResultsPageInner() {
       },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (scheme: any) => {
+        if (!scheme?.id) return;
         // Flush any pending buffer when a scheme result arrives
         if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
         flushBuffer.current();
