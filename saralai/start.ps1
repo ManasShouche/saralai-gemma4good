@@ -55,6 +55,21 @@ if (-not (Test-Path $dbPath)) {
     Write-Host "[3/4] Database already seeded." -ForegroundColor Green
 }
 
+# ── Ollama memory optimization ─────────────────────────────────────────────────
+$env:OLLAMA_MODEL = "gemma4:e4b"
+$env:OLLAMA_NUM_PARALLEL = "1"
+$env:OLLAMA_MAX_LOADED_MODELS = "1"
+$env:OLLAMA_FLASH_ATTENTION = "1"
+
+$ramGB = [math]::Round((Get-CimInstance Win32_ComputerSystem -ErrorAction SilentlyContinue).TotalPhysicalMemory / 1GB)
+if ($ramGB -gt 0 -and $ramGB -le 10) {
+    Write-Host ""
+    Write-Host "  ⚠  Low RAM detected (${ramGB}GB)." -ForegroundColor Yellow
+    Write-Host "     The backend will auto-select a smaller model if available."
+    Write-Host "     For best results: ollama pull gemma4:e2b"
+    Write-Host ""
+}
+
 Write-Host "[4/4] Starting backend on http://localhost:8000 ..." -ForegroundColor Yellow
 $backendJob = Start-Process -FilePath $uvicorn -ArgumentList "main:app --host 0.0.0.0 --port 8000 --reload" -WorkingDirectory $backend -PassThru -WindowStyle Normal
 

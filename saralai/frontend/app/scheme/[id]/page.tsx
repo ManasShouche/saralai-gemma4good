@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Download, MapPin, CheckCircle2, AlertCircle, Volume2, MoreVertical } from "lucide-react";
 import { t } from "@/lib/i18n";
@@ -27,9 +27,71 @@ interface SchemeData {
   application_url?: string;
 }
 
-export default function SchemeDetailPage() {
+// Demo scheme data keyed by ID
+const DEMO_SCHEME_DATA: Record<string, SchemeData> = {
+  igw_pension: {
+    id: "igw_pension",
+    title_kn: "ಇಂದಿರಾ ಗಾಂಧಿ ರಾಷ್ಟ್ರೀಯ ವಿಧವಾ ಪಿಂಚಣಿ",
+    title_en: "Indira Gandhi National Widow Pension",
+    ministry: "Ministry of Rural Development",
+    scope: "national",
+    category: "widow",
+    benefit_en: "₹300/month pension",
+    benefit_kn: "ಮಾಸಿಕ ₹300 ಪಿಂಚಣಿ",
+    eligibility_reason: "ನೀವು ವಿಧವೆ, BPL ವರ್ಗದಲ್ಲಿದ್ದೀರಿ, ಮತ್ತು ವಯಸ್ಸು 40-79 ನಡುವೆ ಇದೆ. ಎಲ್ಲಾ ಮಾನದಂಡಗಳು ಪೂರ್ಣವಾಗಿದೆ.",
+    docs_have: ["aadhaar", "ration_card", "bank_passbook"],
+    docs_need: ["death_certificate"],
+    office: "Block Development Office, Tumkur, Karnataka",
+  },
+  ka_widow_pension: {
+    id: "ka_widow_pension",
+    title_kn: "ಕರ್ನಾಟಕ ವಿಧವಾ ಪಿಂಚಣಿ",
+    title_en: "Karnataka Widow Pension",
+    ministry: "Department of Women & Child Development, Karnataka",
+    scope: "state",
+    category: "widow",
+    benefit_en: "₹600/month pension",
+    benefit_kn: "ಮಾಸಿಕ ₹600 ಪಿಂಚಣಿ",
+    eligibility_reason: "ಕರ್ನಾಟಕ ನಿವಾಸಿ ವಿಧವೆ. ರಾಜ್ಯ ಹೆಚ್ಚುವರಿ ಪಿಂಚಣಿಗೆ ಅರ್ಹರು.",
+    docs_have: ["aadhaar", "bank_passbook"],
+    docs_need: ["death_certificate", "income_certificate"],
+    office: "Taluk Office, Tumkur, Karnataka",
+  },
+  pmuy: {
+    id: "pmuy",
+    title_kn: "ಪ್ರಧಾನ ಮಂತ್ರಿ ಉಜ್ವಲಾ ಯೋಜನೆ",
+    title_en: "PM Ujjwala Yojana (Free LPG)",
+    ministry: "Ministry of Petroleum & Natural Gas",
+    scope: "national",
+    category: "women_child",
+    benefit_en: "Free LPG connection + first refill + stove",
+    benefit_kn: "ಉಚಿತ LPG ಸಂಪರ್ಕ + ಮೊದಲ ರಿಫಿಲ್ + ಸ್ಟೌವ್",
+    eligibility_reason: "BPL ಕುಟುಂಬದ ಮಹಿಳೆ — ಉಚಿತ LPG ಸಂಪರ್ಕಕ್ಕೆ ಅರ್ಹರು.",
+    docs_have: ["aadhaar", "ration_card", "bank_passbook"],
+    docs_need: [],
+    office: "Nearest LPG distributor, Tumkur",
+  },
+  pm_vidya_lakshmi: {
+    id: "pm_vidya_lakshmi",
+    title_kn: "ಪಿಎಂ ವಿದ್ಯಾ ಲಕ್ಷ್ಮಿ (ಶಿಕ್ಷಣ ಸಾಲ)",
+    title_en: "PM Vidya Lakshmi Education Loan",
+    ministry: "Ministry of Education",
+    scope: "national",
+    category: "education",
+    benefit_en: "Up to ₹10L education loan at subsidized interest",
+    benefit_kn: "₹10 ಲಕ್ಷದವರೆಗೆ ಶಿಕ್ಷಣ ಸಾಲ",
+    eligibility_reason: "ನಿಮ್ಮ ಮಕ್ಕಳ ಉನ್ನತ ಶಿಕ್ಷಣಕ್ಕಾಗಿ ಕಡಿಮೆ ಬಡ್ಡಿ ಸಾಲ ಲಭ್ಯ.",
+    docs_have: ["aadhaar"],
+    docs_need: ["income_certificate", "admission_letter"],
+    office: "Lead District Bank, Tumkur, Karnataka",
+  },
+};
+
+function SchemeDetailInner() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isDemo = searchParams.get("demo") === "true";
   const [lang, setLangState] = useState<Language>("en");
   const id = params.id as string;
   const [scheme, setScheme] = useState<SchemeData | null>(null);
@@ -42,6 +104,18 @@ export default function SchemeDetailPage() {
   }, []);
 
   useEffect(() => {
+    // Demo mode: use pre-built data
+    if (isDemo) {
+      const demoScheme = DEMO_SCHEME_DATA[id];
+      if (demoScheme) {
+        setScheme(demoScheme);
+      } else {
+        // Fallback for unknown IDs in demo mode
+        setScheme(Object.values(DEMO_SCHEME_DATA)[0]);
+      }
+      return;
+    }
+
     getSchemeDetails(id)
       .then((data: Record<string, string>) => {
         let docs: string[] = [];
@@ -65,7 +139,7 @@ export default function SchemeDetailPage() {
         });
       })
       .catch((err) => { console.error(err); setSchemeError(true); });
-  }, [id]);
+  }, [id, isDemo]);
 
   const handleDownload = async () => {
     if (!scheme) return;
@@ -238,5 +312,13 @@ export default function SchemeDetailPage() {
 
       <ListenFAB lang={lang} />
     </main>
+  );
+}
+
+export default function SchemeDetailPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-paper" />}>
+      <SchemeDetailInner />
+    </Suspense>
   );
 }

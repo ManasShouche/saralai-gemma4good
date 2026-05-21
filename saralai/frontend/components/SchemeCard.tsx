@@ -27,6 +27,8 @@ interface SchemeCardProps {
 }
 
 export default function SchemeCard({ scheme, index, lang = "kn", isSolid = false }: SchemeCardProps) {
+  const isDemo = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("demo") === "true";
+  const demoQ = isDemo ? "?demo=true" : "";
   const title = lang === "kn" ? (scheme.title_kn || scheme.title_en) :
                 lang === "hi" ? (scheme.title_hi || scheme.title_en) :
                 scheme.title_en;
@@ -41,7 +43,7 @@ export default function SchemeCard({ scheme, index, lang = "kn", isSolid = false
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
       >
-        <Link href={`/scheme/${scheme.id}`}>
+        <Link href={`/scheme/${scheme.id}${demoQ}`}>
           <div className="relative overflow-hidden rounded-[22px] bg-[#161513] p-5">
             <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-[#D9542B] opacity-20 blur-xl pointer-events-none" />
             <div className="flex items-start justify-between gap-3">
@@ -82,7 +84,7 @@ export default function SchemeCard({ scheme, index, lang = "kn", isSolid = false
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: index * 0.07, ease: [0.22, 1, 0.36, 1] }}
     >
-      <Link href={`/scheme/${scheme.id}`}>
+      <Link href={`/scheme/${scheme.id}${demoQ}`}>
         <div className="flex items-center gap-3 bg-white rounded-2xl border border-[rgba(20,18,16,0.08)] px-4 py-4">
           <div className="w-10 h-10 rounded-xl bg-[#FBE9DD] flex items-center justify-center text-xl shrink-0">
             🏛

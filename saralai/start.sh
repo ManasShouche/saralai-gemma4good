@@ -47,8 +47,38 @@ else
   echo "[3/4] Database already seeded."
 fi
 
-echo "[4/4] Starting backend on http://localhost:8000 ..."
+# ── Ollama memory optimization ───────────────────────────────────────────────
 export OLLAMA_MODEL=gemma4:e4b
+export OLLAMA_NUM_PARALLEL=1        # Single request slot — saves context memory
+export OLLAMA_MAX_LOADED_MODELS=1   # Only one model in RAM at a time
+export OLLAMA_FLASH_ATTENTION=1     # Reduced memory for attention computation
+
+# Detect system RAM and warn if low
+RAM_BYTES=$(sysctl -n hw.memsize 2>/dev/null || echo 0)
+RAM_GB=$((RAM_BYTES / 1073741824))
+if [ "$RAM_GB" -le 10 ] 2>/dev/null; then
+  echo ""
+  echo "  ⚠  Low RAM detected (${RAM_GB}GB)."
+  echo "     The backend will auto-select a smaller model if available."
+  echo "     For best results: ollama pull gemma4:e2b"
+  echo ""
+fi
+
+# If llama.cpp backend is requested (edge optimization mode)
+if [ "$SARALAI_BACKEND" = "llamacpp" ]; then
+  echo "  Using llama.cpp direct backend for edge optimization"
+  if ! .venv/bin/python3 -c "import llama_cpp" 2>/dev/null; then
+    echo "  Installing llama-cpp-python..."
+    .venv/bin/pip install -q llama-cpp-python
+  fi
+  if [ -z "$LLAMACPP_MODEL_PATH" ]; then
+    echo "  ⚠  LLAMACPP_MODEL_PATH not set."
+    echo "     Set it to your Gemma 4 GGUF file path, e.g.:"
+    echo "     export LLAMACPP_MODEL_PATH=~/models/gemma-4-e4b-it-Q4_K_M.gguf"
+  fi
+fi
+
+echo "[4/4] Starting backend on http://localhost:8000 ..."
 .venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --reload &
 BACKEND_PID=$!
 sleep 2

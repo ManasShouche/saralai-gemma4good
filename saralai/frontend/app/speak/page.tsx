@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useCallback, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, RotateCcw } from "lucide-react";
 import { t } from "@/lib/i18n";
@@ -10,16 +10,21 @@ import { transcribeAudio } from "@/lib/api";
 import HoldToTalk from "@/components/HoldToTalk";
 import Waveform from "@/components/Waveform";
 
-export default function SpeakPage() {
+// Demo transcript for Rukmini persona — used when ?demo=true is in the URL
+const DEMO_TRANSCRIPT = "ನನ್ನ ಗಂಡ ಎರಡು ವರ್ಷಗಳ ಹಿಂದೆ ತೀರಿಕೊಂಡರು. ನನಗೆ ಇಬ್ಬರು ಮಕ್ಕಳಿದ್ದಾರೆ. ಯಾವುದೇ ಆದಾಯವಿಲ್ಲ.";
+
+function SpeakPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isDemo = searchParams.get("demo") === "true";
   const [lang, setLangState] = useState<Language>(() => {
     if (typeof window === "undefined") return "en";
     return (localStorage.getItem("saralai_lang") as Language) || "en";
   });
   const [isRecording, setIsRecording] = useState(false);
-  const [transcript, setTranscript] = useState("");
+  const [transcript, setTranscript] = useState(isDemo ? DEMO_TRANSCRIPT : "");
   const [isTranscribing, setIsTranscribing] = useState(false);
-  const [hasRecorded, setHasRecorded] = useState(false);
+  const [hasRecorded, setHasRecorded] = useState(isDemo);
   const [seconds, setSeconds] = useState(0);
   const [micError, setMicError] = useState<string | null>(null);
 
@@ -30,6 +35,14 @@ export default function SpeakPage() {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const recordingStartRef = useRef<number>(0);
+
+  // Demo mode: set Kannada as language for Rukmini persona
+  useEffect(() => {
+    if (isDemo) {
+      setLangState("kn");
+      localStorage.setItem("saralai_lang", "kn");
+    }
+  }, [isDemo]);
 
   useEffect(() => {
     return () => {
@@ -141,7 +154,7 @@ export default function SpeakPage() {
 
   const handleConfirm = () => {
     localStorage.setItem("saralai_narrative", transcript);
-    router.push("/results");
+    router.push(isDemo ? "/results?demo=true" : "/results");
   };
 
   return (
@@ -251,5 +264,13 @@ export default function SpeakPage() {
         </motion.div>
       )}
     </main>
+  );
+}
+
+export default function SpeakPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-paper" />}>
+      <SpeakPageInner />
+    </Suspense>
   );
 }

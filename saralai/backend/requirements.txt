@@ -8,3 +8,8 @@ sqlite-utils==3.35
 pillow==10.2.0
 faster-whisper==1.2.1
 sse-starlette==2.0.0
+
+# Edge optimization (optional — activate with SARALAI_BACKEND=llamacpp)
+# Provides direct llama.cpp control for resource-constrained hardware.
+# Uncomment to install, or run: pip install llama-cpp-python>=0.3.0
+# llama-cpp-python>=0.3.0

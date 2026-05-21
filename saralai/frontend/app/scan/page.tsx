@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, RotateCcw } from "lucide-react";
 import { t } from "@/lib/i18n";
@@ -28,19 +28,39 @@ const FIELD_LABELS: Record<string, Record<Language, string>> = {
   aadhaar_number: { en: "Aadhaar",        hi: "आधार",         kn: "ಆಧಾರ್" },
 };
 
-export default function ScanPage() {
+// Demo data for Rukmini persona — used when ?demo=true is in the URL
+const DEMO_FIELDS: ExtractedField[] = [
+  { key: "name", value: "Rukmini Devi", confidence: 0.96 },
+  { key: "dob", value: "1973-04-15", confidence: 0.93 },
+  { key: "gender", value: "F", confidence: 0.99 },
+  { key: "district", value: "Tumkur", confidence: 0.91 },
+  { key: "state", value: "Karnataka", confidence: 0.94 },
+  { key: "aadhaar_number", value: "XXXX XXXX 4521", confidence: 0.97 },
+];
+
+function ScanPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isDemo = searchParams.get("demo") === "true";
   const [lang, setLangState] = useState<Language>(() => {
     if (typeof window === "undefined") return "en";
     return (localStorage.getItem("saralai_lang") as Language) || "en";
   });
-  const [scanState, setScanState] = useState<ScanState>("camera");
+  const [scanState, setScanState] = useState<ScanState>(isDemo ? "confirm" : "camera");
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [fields, setFields] = useState<ExtractedField[]>([]);
   const [elapsed, setElapsed] = useState(0);
   const [rawText, setRawText] = useState<string | null>(null);
   const [showRaw, setShowRaw] = useState(false);
   const [extractError, setExtractError] = useState<string | null>(null);
+
+  // Demo mode: pre-fill Rukmini's fields on mount
+  useEffect(() => {
+    if (isDemo) {
+      setFields(DEMO_FIELDS);
+      setElapsed(2.8);
+    }
+  }, [isDemo]);
 
   const handleCapture = async (blob: Blob, docType: string = "aadhaar") => {
     if (scanState !== "camera") return; // prevent double-capture
@@ -92,7 +112,7 @@ export default function ScanPage() {
     localStorage.setItem("saralai_profile", JSON.stringify(profile));
     // Persist name so home screen can greet the user by name
     if (profile.name) localStorage.setItem("saralai_user_name", profile.name);
-    router.push("/speak");
+    router.push(isDemo ? "/speak?demo=true" : "/speak");
   };
 
   if (scanState === "camera") {
@@ -245,5 +265,13 @@ export default function ScanPage() {
 
       <ListenFAB lang={lang} bottom={100} />
     </main>
+  );
+}
+
+export default function ScanPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-paper" />}>
+      <ScanPageInner />
+    </Suspense>
   );
 }

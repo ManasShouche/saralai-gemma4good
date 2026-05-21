@@ -80,10 +80,19 @@ export default function Home() {
     }
   };
 
+  // Detect ?demo=true and propagate it through the flow
+  const [isDemo, setIsDemo] = useState(false);
+  useEffect(() => {
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("demo") === "true") {
+      setIsDemo(true);
+    }
+  }, []);
+  const demoQ = isDemo ? "?demo=true" : "";
+
   const SECONDARY_ACTIONS = [
-    { key: "home.actScan", icon: ScanLine, href: "/scan" },
-    { key: "home.actSpeak", icon: Mic, href: "/speak" },
-    { key: "home.actStatus", icon: ClipboardList, href: "/results" },
+    { key: "home.actScan", icon: ScanLine, href: `/scan${demoQ}` },
+    { key: "home.actSpeak", icon: Mic, href: `/speak${demoQ}` },
+    { key: "home.actStatus", icon: ClipboardList, href: `/results${demoQ}` },
   ];
 
   return (
@@ -167,7 +176,7 @@ export default function Home() {
           label={t("home.primaryFind", lang)}
           sub={t("home.primaryFindSub", lang)}
           icon={<Sparkles size={28} />}
-          href="/scan"
+          href={`/scan${demoQ}`}
         />
       </motion.div>
 

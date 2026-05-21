@@ -41,11 +41,44 @@ A 52-year-old widow in rural Karnataka named Rukmini speaks only Kannada. She ca
 
 > **[Watch the 2-minute demo →](#)**
 
-Screenshots:
+### App Walkthrough
 
-| Home | Camera Scan | Results |
-|------|-------------|---------|
-| Language toggle, one-tap CTA | Live viewfinder with Gemma 4 OCR | Streamed scheme cards with eligibility reasons |
+<table>
+<tr>
+<td align="center" width="33%">
+<img src="docs/screenshots/01-home.png" width="240" alt="Home screen with Kannada language selected" /><br/>
+<strong>1. Home</strong><br/>
+<sub>One-tap CTA in the user's language. Privacy badge visible at all times.</sub>
+</td>
+<td align="center" width="33%">
+<img src="docs/screenshots/02-scan.png" width="240" alt="Camera scanning an Aadhaar card with extracted fields" /><br/>
+<strong>2. Scan Aadhaar</strong><br/>
+<sub>Point phone camera at Aadhaar card. Fields stream in live as Gemma 4 reads them.</sub>
+</td>
+<td align="center" width="33%">
+<img src="docs/screenshots/03-speak.png" width="240" alt="Voice recording screen with waveform" /><br/>
+<strong>3. Speak</strong><br/>
+<sub>Hold to talk in Kannada or Hindi. Real-time waveform. "My husband passed away two years ago…"</sub>
+</td>
+</tr>
+<tr>
+<td align="center" width="33%">
+<img src="docs/screenshots/04-reasoning.png" width="240" alt="Gemma 4 reasoning stream evaluating eligibility" /><br/>
+<strong>4. Gemma 4 Thinks</strong><br/>
+<sub>Live reasoning stream: the model evaluates each scheme's eligibility rules against the user's profile.</sub>
+</td>
+<td align="center" width="33%">
+<img src="docs/screenshots/05-results.png" width="240" alt="Matched scheme cards with eligibility reasons" /><br/>
+<strong>5. Results</strong><br/>
+<sub>Matched schemes appear one by one with plain-language eligibility reasons and document checklists.</sub>
+</td>
+<td align="center" width="33%">
+<img src="docs/screenshots/06-scheme.png" width="240" alt="Scheme detail page with download form button" /><br/>
+<strong>6. Scheme Detail</strong><br/>
+<sub>Full explanation, required documents (✓ have / ⚠ need), nearest office, and "Download pre-filled form" button.</sub>
+</td>
+</tr>
+</table>
 
 ---
 
@@ -219,6 +252,65 @@ A custom tool-calling loop — built without LangChain, using OpenAI-compatible 
 | `generate_application_form` | Triggers pre-filled PDF generation via ReportLab |
 
 The model's reasoning stream — match decisions, skip reasons, tool calls — is forwarded to the frontend via SSE and displayed in real time in the `ReasoningStream` component. **Judges can watch Gemma 4 think.**
+
+---
+
+## Edge Optimization
+
+SaralAI adapts automatically to whatever hardware it lands on. The `memory_config.py` module detects available system RAM at startup, selects the appropriate model variant, tunes KV cache size, adjusts GPU layer offloading, and configures Whisper ASR — all without user intervention.
+
+### Hardware Tier Matrix
+
+| Device | RAM | Model | Context Window | GPU Layers | Whisper | Backend |
+|--------|-----|-------|---------------|------------|---------|---------|
+| Raspberry Pi / Phone | 4-8 GB | gemma4:e2b (auto fallback) | 1024 tokens | CPU only | tiny | llama.cpp |
+| MacBook Air M2 | 8 GB | gemma4:e2b (auto fallback) | 2048 tokens | CPU only | tiny | Ollama or llama.cpp |
+| MacBook Pro M-series | 16 GB | gemma4:e4b | 4096 tokens | Full GPU offload | small | Ollama |
+| Workstation / Desktop | 32 GB+ | gemma4:e4b | 8192 tokens | Full GPU offload | small | Ollama |
+
+The default Gemma 4 context window is 128K tokens. On an 8 GB device, reducing it to 2048 reclaims 2-4 GB of KV cache memory — the difference between running and crashing. The tier system handles this transparently.
+
+### How Auto-Detection Works
+
+On startup, `memory_config.py` reads total system RAM and selects a configuration tier:
+
+- **8 GB (aggressive)** — Switches model to `gemma4:e2b`, caps context at 2048, sets Whisper to `tiny`, forces single-model loading
+- **16 GB (moderate)** — Uses `gemma4:e4b` with 4096 context, Whisper `small`, full GPU offload
+- **32 GB+ (comfortable)** — Full `gemma4:e4b` with 8192 context and no restrictions
+
+Ollama environment variables are set automatically:
+
+```bash
+OLLAMA_NUM_PARALLEL=1          # One inference at a time (saves ~1 GB)
+OLLAMA_MAX_LOADED_MODELS=1     # Evict previous model before loading next
+OLLAMA_FLASH_ATTENTION=1       # 30-40% memory reduction on attention layers
+```
+
+### llama.cpp Direct Backend
+
+For maximum control on edge devices, set `SARALAI_BACKEND=llamacpp` to bypass Ollama entirely and load the GGUF model directly via `llama-cpp-python`. This enables:
+
+- **Per-request context sizing** — OCR extraction uses `n_ctx=512`, transcription uses `n_ctx=1024`, scheme matching uses `n_ctx=2048`. No wasted KV cache between request types.
+- **Memory-mapped model loading** — `use_mmap=True` lets the OS page model weights in and out of RAM, reducing peak resident memory.
+- **Flash attention** — `flash_attn=True` for O(1) memory attention computation instead of O(n^2).
+- **Dynamic GPU layer offloading** — Automatically calculates how many transformer layers fit in available VRAM and offloads the rest to CPU.
+- **Performance telemetry** — Logs tokens/sec, time-to-first-token (TTFT), and peak RSS for every request.
+
+### Quick Commands for Edge Setup
+
+```bash
+# 8 GB device — auto-selects e2b model and aggressive memory settings
+ollama pull gemma4:e2b
+./start.sh
+
+# Or with llama.cpp direct backend for maximum edge control
+pip install llama-cpp-python
+SARALAI_BACKEND=llamacpp LLAMACPP_MODEL_PATH=./gemma4-e2b.gguf ./start.sh
+```
+
+### Why Edge Deployment Matters
+
+64% of rural Indian women cannot perform basic smartphone tasks. They cannot afford cloud API costs. They should not have to. SaralAI runs welfare scheme matching on a Rs 15,000 phone with no internet connection, no API key, and no per-query cost — making access to government benefits genuinely free and private for the people who need it most.
 
 ---
 

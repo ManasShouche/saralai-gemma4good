@@ -39,8 +39,14 @@ if not exist "schemes.db" (
     echo [3/4] Database already seeded.
 )
 
+REM ── Ollama memory optimization ──────────────────────────────────────────────
+set OLLAMA_MODEL=gemma4:e4b
+set OLLAMA_NUM_PARALLEL=1
+set OLLAMA_MAX_LOADED_MODELS=1
+set OLLAMA_FLASH_ATTENTION=1
+
 echo [4/4] Starting backend on http://localhost:8000 ...
-start "SaralAI Backend" cmd /k "cd /d "%BACKEND_DIR%" && set OLLAMA_MODEL=gemma4:e4b && .venv\Scripts\uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+start "SaralAI Backend" cmd /k "cd /d "%BACKEND_DIR%" && set OLLAMA_MODEL=gemma4:e4b && set OLLAMA_NUM_PARALLEL=1 && set OLLAMA_MAX_LOADED_MODELS=1 && set OLLAMA_FLASH_ATTENTION=1 && .venv\Scripts\uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
 timeout /t 3 /nobreak >nul
 
 REM ── 3. Frontend setup ────────────────────────────────────────────────────────

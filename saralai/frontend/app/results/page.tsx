@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Sparkles, SlidersHorizontal } from "lucide-react";
 import { t } from "@/lib/i18n";
@@ -25,8 +25,70 @@ interface SchemeResult {
   confidence?: number;
 }
 
-export default function ResultsPage() {
+// Demo data — Rukmini's matched schemes
+const DEMO_SCHEMES: SchemeResult[] = [
+  {
+    id: "igw_pension",
+    title_kn: "ಇಂದಿರಾ ಗಾಂಧಿ ರಾಷ್ಟ್ರೀಯ ವಿಧವಾ ಪಿಂಚಣಿ",
+    title_en: "Indira Gandhi National Widow Pension",
+    qualifies: true,
+    reason_kn: "ನೀವು ವಿಧವೆ, BPL ವರ್ಗದಲ್ಲಿದ್ದೀರಿ, ಮತ್ತು ವಯಸ್ಸು 40-79 ನಡುವೆ ಇದೆ.",
+    reason_en: "You are widowed, in BPL category, and aged between 40-79.",
+    benefit: "₹300/month",
+    documents_needed: ["Aadhaar ✓", "Ration card ✓", "Death certificate ⚠"],
+    confidence: 0.96,
+  },
+  {
+    id: "ka_widow_pension",
+    title_kn: "ಕರ್ನಾಟಕ ವಿಧವಾ ಪಿಂಚಣಿ",
+    title_en: "Karnataka Widow Pension",
+    qualifies: true,
+    reason_kn: "ಕರ್ನಾಟಕ ರಾಜ್ಯದ ವಿಧವೆಯರಿಗೆ ಹೆಚ್ಚುವರಿ ₹600/ತಿಂಗಳು ಪಿಂಚಣಿ.",
+    reason_en: "Additional state pension of ₹600/month for Karnataka widows.",
+    benefit: "₹600/month",
+    documents_needed: ["Aadhaar ✓", "Death certificate ⚠", "Bank passbook ✓"],
+    confidence: 0.93,
+  },
+  {
+    id: "pmuy",
+    title_kn: "ಪ್ರಧಾನ ಮಂತ್ರಿ ಉಜ್ವಲಾ ಯೋಜನೆ",
+    title_en: "PM Ujjwala Yojana (Free LPG)",
+    qualifies: true,
+    reason_kn: "BPL ಕುಟುಂಬದ ಮಹಿಳೆ — ಉಚಿತ LPG ಸಂಪರ್ಕಕ್ಕೆ ಅರ್ಹರು.",
+    reason_en: "Female from BPL family — eligible for free LPG connection.",
+    benefit: "Free LPG + stove",
+    documents_needed: ["Aadhaar ✓", "Ration card ✓", "Bank passbook ✓"],
+    confidence: 0.91,
+  },
+  {
+    id: "pm_vidya_lakshmi",
+    title_kn: "ಪಿಎಂ ವಿದ್ಯಾ ಲಕ್ಷ್ಮಿ (ಶಿಕ್ಷಣ ಸಾಲ)",
+    title_en: "PM Vidya Lakshmi Education Loan",
+    qualifies: true,
+    reason_kn: "ನಿಮ್ಮ ಮಕ್ಕಳ ಶಿಕ್ಷಣಕ್ಕಾಗಿ ಕಡಿಮೆ ಬಡ್ಡಿ ಸಾಲ.",
+    reason_en: "Low-interest education loan for your children's studies.",
+    benefit: "Up to ₹10L loan",
+    documents_needed: ["Aadhaar ✓", "Income certificate ⚠", "Admission letter ⚠"],
+    confidence: 0.85,
+  },
+];
+
+const DEMO_THOUGHTS: Thought[] = [
+  { id: "1", type: "profile", text: "Analyzing profile: Rukmini Devi, 52, Female, Tumkur, Karnataka" },
+  { id: "2", type: "profile", text: "Widow status confirmed from narrative. BPL/AAY ration category." },
+  { id: "3", type: "tool", text: "⟳ tool: find matching schemes → widow, senior, women" },
+  { id: "4", type: "match", text: "✓ IGW Pension: widow + BPL + age 40-79 → all criteria met" },
+  { id: "5", type: "match", text: "✓ Karnataka Widow Pension: state-level top-up confirmed" },
+  { id: "6", type: "match", text: "✓ PM Ujjwala: female + BPL + no LPG → eligible" },
+  { id: "7", type: "skip", text: "✗ PM Awas Yojana: requires no pucca house — insufficient data, skipping" },
+  { id: "8", type: "match", text: "✓ PM Vidya Lakshmi: children in education age range" },
+  { id: "9", type: "profile", text: "Evaluation complete. 4 schemes matched out of 50 evaluated." },
+];
+
+function ResultsPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isDemo = searchParams.get("demo") === "true";
   const [lang, setLangState] = useState<Language>("en");
   const [phase, setPhase] = useState<"searching" | "results" | "error">("searching");
   const [thoughts, setThoughts] = useState<Thought[]>([]);
@@ -65,7 +127,41 @@ export default function ResultsPage() {
     }
   }, []);
 
+  // Demo mode: simulate the reasoning stream with timed animations
   useEffect(() => {
+    if (!isDemo) return;
+    let i = 0;
+    const thinkInterval = setInterval(() => {
+      if (i < DEMO_THOUGHTS.length) {
+        setThoughts((p) => [...p, DEMO_THOUGHTS[i]]);
+        setEvaluated(Math.min(50, (i + 1) * 6));
+        i++;
+      }
+    }, 400);
+
+    // Show schemes after reasoning finishes
+    const schemeTimeout = setTimeout(() => {
+      clearInterval(thinkInterval);
+      setEvaluated(50);
+      DEMO_SCHEMES.forEach((s, idx) => {
+        setTimeout(() => {
+          setSchemes((p) => [...p, s]);
+          if (idx === DEMO_SCHEMES.length - 1) {
+            setTimeout(() => {
+              setElapsed(8.4);
+              setPhase("results");
+              localStorage.setItem("saralai_last_visit", JSON.stringify({ count: DEMO_SCHEMES.length }));
+            }, 600);
+          }
+        }, idx * 500);
+      });
+    }, DEMO_THOUGHTS.length * 400 + 300);
+
+    return () => { clearInterval(thinkInterval); clearTimeout(schemeTimeout); };
+  }, [isDemo]);
+
+  useEffect(() => {
+    if (isDemo) return; // demo mode handles its own data
     let profile: Record<string, string> = {};
     let narrative = "";
     try {
@@ -261,5 +357,13 @@ export default function ResultsPage() {
 
       <ListenFAB lang={lang} />
     </main>
+  );
+}
+
+export default function ResultsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-paper" />}>
+      <ResultsPageInner />
+    </Suspense>
   );
 }

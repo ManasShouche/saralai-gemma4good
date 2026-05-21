@@ -7,6 +7,11 @@ Provides two primary interfaces:
 
 All model interactions go through this module to centralize
 configuration, error handling, and privacy masking.
+
+Backend selection:
+  Set SARALAI_BACKEND=llamacpp to use llama-cpp-python directly for
+  edge-optimized inference (fine-grained memory control, no Ollama daemon).
+  Default is "ollama".
 """
 
 import json
@@ -18,16 +23,48 @@ from typing import Callable, Optional
 import ollama
 from faster_whisper import WhisperModel
 
+from memory_config import get_ollama_options, get_preferred_model, log_config, IS_LOW_RAM
+
+# ---------------------------------------------------------------------------
+# Backend selection: Ollama (default) or llama-cpp-python (edge optimization)
+# ---------------------------------------------------------------------------
+BACKEND = os.getenv("SARALAI_BACKEND", "ollama")  # "ollama" or "llamacpp"
+
+if BACKEND == "llamacpp":
+    try:
+        from llama_backend import (
+            extract_fields_llamacpp,
+            run_agentic_loop_llamacpp,
+            is_available as _llamacpp_is_available,
+        )
+        _USE_LLAMACPP = _llamacpp_is_available()
+        if _USE_LLAMACPP:
+            print("[SaralAI] Using llama.cpp direct backend for edge optimization")
+        else:
+            print("[SaralAI] llama.cpp backend requested but model not configured, "
+                  "falling back to Ollama")
+    except ImportError:
+        _USE_LLAMACPP = False
+        print("[SaralAI] llama-cpp-python not installed, falling back to Ollama")
+else:
+    _USE_LLAMACPP = False
+
 # Configuration
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 
+# Log system config at startup
+log_config()
+
+
 def _resolve_model() -> str:
-    """Return the model to use, falling back to gemma4:e4b if configured tag is absent."""
+    """Return the model to use, with RAM-aware fallback for low-memory devices."""
     configured = os.getenv("OLLAMA_MODEL", "gemma4:e4b")
     try:
         available = [m.model for m in ollama.list().models]
-        if configured in available:
-            return configured
+        # On low-RAM devices, prefer e2b if available
+        preferred = get_preferred_model(configured, available)
+        if preferred in available:
+            return preferred
         # Configured tag not found — try the canonical tag
         fallback = "gemma4:e4b"
         if fallback in available:
@@ -39,6 +76,7 @@ def _resolve_model() -> str:
         return configured
 
 MODEL = _resolve_model()
+print(f"[SaralAI] Using model: {MODEL}")
 
 # Privacy: regex to find and mask Aadhaar numbers
 AADHAAR_PATTERN = re.compile(r"\b(\d{4})\s*(\d{4})\s*(\d{4})\b")
@@ -94,6 +132,9 @@ def extract_fields(image_bytes: bytes, doc_type: str) -> dict:
     Returns:
         Dictionary of extracted fields with values
     """
+    if _USE_LLAMACPP:
+        return extract_fields_llamacpp(image_bytes, doc_type)
+
     import base64
     image_b64 = base64.b64encode(image_bytes).decode("utf-8")
 
@@ -113,7 +154,7 @@ def extract_fields(image_bytes: bytes, doc_type: str) -> dict:
             {"role": "user", "content": prompt, "images": [image_b64]}
         ],
         format="json",
-        options={"temperature": 0.1},
+        options=get_ollama_options({"temperature": 0.1}),
     )
 
     # Parse the JSON response (ollama>=0.4 returns objects, not dicts)
@@ -143,10 +184,13 @@ _whisper_model: Optional[WhisperModel] = None
 
 
 def get_whisper_model() -> WhisperModel:
-    """Return a cached WhisperModel, creating it on first call."""
+    """Return a cached WhisperModel, creating it on first call.
+    Uses 'tiny' on low-RAM devices to save ~400MB."""
     global _whisper_model
     if _whisper_model is None:
-        _whisper_model = WhisperModel("small", device="cpu", compute_type="int8")
+        size = "tiny" if IS_LOW_RAM else "small"
+        print(f"[SaralAI] Loading Whisper model: {size}")
+        _whisper_model = WhisperModel(size, device="cpu", compute_type="int8")
     return _whisper_model
 
 
@@ -217,6 +261,12 @@ def run_agentic_loop(
         tool_registry: Dict mapping function names to callables
         timeout: Hard timeout in seconds (default 60)
     """
+    if _USE_LLAMACPP:
+        return run_agentic_loop_llamacpp(
+            messages, profile, language, stream_callback,
+            tools, tool_registry, timeout,
+        )
+
     start_time = time.time()
     schemes_found = 0
     schemes_evaluated = 0
@@ -238,7 +288,7 @@ def run_agentic_loop(
             messages=messages,
             tools=tools,
             stream=True,
-            options={"temperature": 0.3},
+            options=get_ollama_options({"temperature": 0.3}),
         )
 
         tool_calls = []
