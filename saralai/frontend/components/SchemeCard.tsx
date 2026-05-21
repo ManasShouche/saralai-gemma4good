@@ -27,6 +27,7 @@ interface SchemeCardProps {
 }
 
 export default function SchemeCard({ scheme, index, lang = "kn", isSolid = false }: SchemeCardProps) {
+  if (!scheme) return null;
   const isDemo = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("demo") === "true";
   const demoQ = isDemo ? "?demo=true" : "";
   const title = lang === "kn" ? (scheme.title_kn || scheme.title_en) :

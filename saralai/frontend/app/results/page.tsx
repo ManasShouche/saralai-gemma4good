@@ -337,7 +337,7 @@ function ResultsPageInner() {
       {/* Scheme cards */}
       <div className="flex flex-col gap-4">
         <AnimatePresence>
-          {schemes.map((scheme, i) => (
+          {schemes.filter(Boolean).map((scheme, i) => (
             <SchemeCard
               key={scheme.id}
               scheme={scheme}
