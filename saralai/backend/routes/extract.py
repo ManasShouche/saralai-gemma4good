@@ -4,15 +4,109 @@ Document extraction route — POST /api/extract-doc
 Accepts a document image and returns extracted fields via SSE stream.
 """
 
+import asyncio
 import io
 import json
 import time
 
 from fastapi import APIRouter, File, Form, UploadFile
-from PIL import Image
+from PIL import Image, ImageFilter
 from sse_starlette.sse import EventSourceResponse
 
 from ollama_client import extract_fields
+
+
+def crop_to_card(img: Image.Image) -> Image.Image:
+    """
+    Attempt to crop the image to just the document/card region.
+
+    Strategy: find the largest bright (white/light) rectangular region
+    in the image, which is likely the card against a dark background.
+    Falls back to center-crop if detection fails.
+    """
+    w, h = img.size
+
+    # Convert to grayscale and threshold to find bright regions
+    gray = img.convert("L")
+    # Threshold: pixels > 180 are "bright" (card-like)
+    threshold = 180
+    pixels = gray.load()
+
+    # Scan rows to find top/bottom bounds of bright region
+    row_brightness = []
+    for y in range(h):
+        bright_count = sum(1 for x in range(w) if pixels[x, y] > threshold)
+        row_brightness.append(bright_count / w)
+
+    # Find contiguous region where >30% of row is bright
+    min_ratio = 0.3
+    top, bottom = None, None
+    for y, ratio in enumerate(row_brightness):
+        if ratio > min_ratio:
+            if top is None:
+                top = y
+            bottom = y
+
+    # Scan columns similarly
+    col_brightness = []
+    for x in range(w):
+        bright_count = sum(1 for y in range(h) if pixels[x, y] > threshold)
+        col_brightness.append(bright_count / h)
+
+    left, right = None, None
+    for x, ratio in enumerate(col_brightness):
+        if ratio > min_ratio:
+            if left is None:
+                left = x
+            right = x
+
+    # Validate we found something reasonable
+    if top is not None and bottom is not None and left is not None and right is not None:
+        card_h = bottom - top
+        card_w = right - left
+        # Card should be at least 20% of the image in each dimension
+        if card_h > h * 0.15 and card_w > w * 0.15:
+            # Add small padding
+            pad = 10
+            crop_box = (
+                max(0, left - pad),
+                max(0, top - pad),
+                min(w, right + pad),
+                min(h, bottom + pad),
+            )
+            return img.crop(crop_box)
+
+    # Fallback: center crop to 80% (removes status bars and nav bars)
+    margin_x = int(w * 0.1)
+    margin_y = int(h * 0.1)
+    return img.crop((margin_x, margin_y, w - margin_x, h - margin_y))
+
+
+def prepare_image(image_bytes: bytes) -> bytes:
+    """
+    Prepare an image for model extraction:
+    1. Crop to card region (removes phone UI)
+    2. Resize to max 640px wide (smaller = faster inference)
+    3. Re-encode as JPEG at 85% quality
+    """
+    img = Image.open(io.BytesIO(image_bytes))
+
+    # Crop to card region
+    img = crop_to_card(img)
+
+    # Resize to max 640px wide
+    max_w = 640
+    if img.width > max_w:
+        ratio = max_w / img.width
+        img = img.resize(
+            (max_w, int(img.height * ratio)),
+            Image.Resampling.LANCZOS,
+        )
+
+    # Re-encode
+    buf = io.BytesIO()
+    img.convert("RGB").save(buf, format="JPEG", quality=85)
+    return buf.getvalue()
 
 router = APIRouter()
 
@@ -28,12 +122,11 @@ async def extract_document(
     Accepts: multipart form with image (JPEG/PNG) and doc_type.
     Returns: SSE stream of extracted fields.
     """
-    image_bytes = await image.read()
+    raw_bytes = await image.read()
 
-    # Validate image isn't black/empty before sending to model
+    # Validate image isn't black/empty
     try:
-        img = Image.open(io.BytesIO(image_bytes))
-        # Check if image is mostly black (mean pixel value < 10)
+        img = Image.open(io.BytesIO(raw_bytes))
         grayscale = img.convert("L")
         pixels = list(grayscale.getdata())
         mean_brightness = sum(pixels) / len(pixels) if pixels else 0
@@ -48,12 +141,23 @@ async def extract_document(
                 }
             return EventSourceResponse(empty_image_error())
     except Exception:
-        pass  # If PIL can't open it, let the model try and fail with a better error
+        pass
+
+    # Crop to card region + resize + re-encode (removes phone UI, reduces model load)
+    try:
+        image_bytes = prepare_image(raw_bytes)
+    except Exception:
+        image_bytes = raw_bytes  # If prep fails, send original
 
     async def event_generator():
         start_time = time.time()
         try:
-            fields = extract_fields(image_bytes, doc_type)
+            # Run blocking Ollama call in a thread so it doesn't block
+            # other requests (e.g. retake while first is still processing)
+            loop = asyncio.get_event_loop()
+            fields = await loop.run_in_executor(
+                None, extract_fields, image_bytes, doc_type
+            )
 
             if "error" in fields:
                 yield {

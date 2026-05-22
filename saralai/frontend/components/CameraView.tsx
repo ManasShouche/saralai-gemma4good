@@ -66,13 +66,19 @@ export default function CameraView({
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext("2d")?.drawImage(video, 0, 0);
+
+    // Downscale to max 640px wide — smaller image = faster model response
+    // (Gemma vision doesn't need 1280px to read text on a card)
+    const maxW = 640;
+    const scale = Math.min(maxW / video.videoWidth, 1);
+    canvas.width = Math.round(video.videoWidth * scale);
+    canvas.height = Math.round(video.videoHeight * scale);
+    canvas.getContext("2d")?.drawImage(video, 0, 0, canvas.width, canvas.height);
+
     const docType = DOC_TYPE_VALUES[activeTab] ?? "aadhaar";
     canvas.toBlob((blob) => {
       if (blob) onCapture(blob, docType);
-    }, "image/jpeg", 0.92);
+    }, "image/jpeg", 0.85);
   };
 
   const tabs = DOC_TABS[lang];

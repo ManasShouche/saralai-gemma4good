@@ -3,9 +3,9 @@
  * Handles both standard REST calls and SSE streaming connections.
  */
 
-// Use relative URLs so Next.js proxy (next.config.js rewrites) forwards to FastAPI.
-// Set NEXT_PUBLIC_API_URL only when deploying frontend separately from the proxy.
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
+// Hit FastAPI directly to avoid Next.js proxy timeout (default 30s).
+// Model inference can take 30-60s on constrained hardware.
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 /**
  * Extract fields from a document image via SSE stream.
