@@ -51,7 +51,9 @@ fi
 export OLLAMA_MODEL=gemma4:e4b
 export OLLAMA_NUM_PARALLEL=1        # Single request slot — saves context memory
 export OLLAMA_MAX_LOADED_MODELS=1   # Only one model in RAM at a time
-export OLLAMA_FLASH_ATTENTION=1     # Reduced memory for attention computation
+export OLLAMA_FLASH_ATTENTION=1     # Required for KV cache quantization
+export OLLAMA_KV_CACHE_TYPE=q8_0    # Halve KV cache memory (~100MB saved)
+export OLLAMA_KEEP_ALIVE=-1         # Keep model loaded permanently (no 20s reload)
 
 # Detect system RAM and warn if low
 RAM_BYTES=$(sysctl -n hw.memsize 2>/dev/null || echo 0)
@@ -82,6 +84,12 @@ echo "[4/4] Starting backend on http://localhost:8000 ..."
 .venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --reload &
 BACKEND_PID=$!
 sleep 2
+
+# Pre-warm: load model into Metal GPU memory before user interacts
+echo "  Pre-warming Gemma model (this avoids a 20s delay on first request)..."
+curl -s http://localhost:11434/api/generate \
+  -d '{"model":"'"$OLLAMA_MODEL"'","prompt":"hello","stream":false,"options":{"num_predict":1,"num_ctx":2048}}' \
+  > /dev/null 2>&1 &
 
 # ── 3. Frontend ───────────────────────────────────────────────────────────────
 cd "$FRONTEND"

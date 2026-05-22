@@ -60,6 +60,8 @@ $env:OLLAMA_MODEL = "gemma4:e4b"
 $env:OLLAMA_NUM_PARALLEL = "1"
 $env:OLLAMA_MAX_LOADED_MODELS = "1"
 $env:OLLAMA_FLASH_ATTENTION = "1"
+$env:OLLAMA_KV_CACHE_TYPE = "q8_0"
+$env:OLLAMA_KEEP_ALIVE = "-1"
 
 $ramGB = [math]::Round((Get-CimInstance Win32_ComputerSystem -ErrorAction SilentlyContinue).TotalPhysicalMemory / 1GB)
 if ($ramGB -gt 0 -and $ramGB -le 10) {

@@ -4,10 +4,12 @@ Document extraction route — POST /api/extract-doc
 Accepts a document image and returns extracted fields via SSE stream.
 """
 
+import io
 import json
 import time
 
 from fastapi import APIRouter, File, Form, UploadFile
+from PIL import Image
 from sse_starlette.sse import EventSourceResponse
 
 from ollama_client import extract_fields
@@ -27,6 +29,26 @@ async def extract_document(
     Returns: SSE stream of extracted fields.
     """
     image_bytes = await image.read()
+
+    # Validate image isn't black/empty before sending to model
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+        # Check if image is mostly black (mean pixel value < 10)
+        grayscale = img.convert("L")
+        pixels = list(grayscale.getdata())
+        mean_brightness = sum(pixels) / len(pixels) if pixels else 0
+        if mean_brightness < 10:
+            async def empty_image_error():
+                yield {
+                    "event": "error",
+                    "data": json.dumps({
+                        "message": "Image appears to be blank or too dark. "
+                                   "Make sure the camera can see the document clearly."
+                    }),
+                }
+            return EventSourceResponse(empty_image_error())
+    except Exception:
+        pass  # If PIL can't open it, let the model try and fail with a better error
 
     async def event_generator():
         start_time = time.time()

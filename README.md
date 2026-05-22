@@ -30,16 +30,15 @@ SaralAI adapts automatically to whatever hardware it lands on — no configurati
 | **Adaptive memory config** (`memory_config.py`) | Auto-detects system RAM at startup and selects the right model variant (`e4b` vs `e2b`), context window (1024-8192), GPU offload level, and Whisper ASR size |
 | **llama.cpp direct backend** (`llama_backend.py`) | Alternative to Ollama for edge devices. Loads GGUF model directly via `llama-cpp-python` with per-request context sizing, memory-mapped weights, flash attention, and dynamic GPU layer offloading |
 | **Ollama memory guards** | Sets `OLLAMA_NUM_PARALLEL=1`, `OLLAMA_MAX_LOADED_MODELS=1`, `OLLAMA_FLASH_ATTENTION=1` automatically to prevent OOM on constrained devices |
-| **3-tier hardware profiles** | **LOW** (8 GB): `gemma4:e2b`, 2048 ctx, CPU-only, Whisper tiny / **MEDIUM** (16 GB): `gemma4:e4b`, 4096 ctx, full GPU / **HIGH** (32 GB+): full model, 8192 ctx |
+| **3-tier hardware profiles** | **LOW** (≤10 GB): `gemma4:e2b`, 1024 ctx, Whisper tiny / **MEDIUM** (≤16 GB): `gemma4:e4b`, 2048 ctx, full Metal on Apple Silicon / **HIGH** (32 GB+): `gemma4:e4b`, 8192 ctx, full GPU |
 | **Performance telemetry** | llama.cpp backend logs tokens/sec, time-to-first-token, and peak RSS for every request |
 
 ### Hardware Tier Matrix
 
 | Device | RAM | Model | Context Window | GPU Layers | Whisper | Backend |
 |--------|-----|-------|---------------|------------|---------|---------|
-| Raspberry Pi / Phone | 4-8 GB | gemma4:e2b (auto) | 1024 tokens | CPU only | tiny | llama.cpp |
-| MacBook Air M2 | 8 GB | gemma4:e2b (auto) | 2048 tokens | CPU only | tiny | Ollama or llama.cpp |
-| MacBook Pro M-series | 16 GB | gemma4:e4b | 4096 tokens | Full GPU | small | Ollama |
+| Raspberry Pi / Phone | 4-8 GB | gemma4:e2b (auto) | 1024 tokens | Full Metal / CPU | tiny | llama.cpp |
+| MacBook Air/Pro M-series | 8-16 GB | gemma4:e4b | 2048 tokens | Full Metal | tiny | Ollama |
 | Workstation / Desktop | 32 GB+ | gemma4:e4b | 8192 tokens | Full GPU | small | Ollama |
 
 ### llama.cpp Direct Backend
