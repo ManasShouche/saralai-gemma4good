@@ -18,68 +18,80 @@ from ollama_client import extract_fields
 
 def crop_to_card(img: Image.Image) -> Image.Image:
     """
-    Attempt to crop the image to just the document/card region.
+    Crop the image to just the document/card region.
 
-    Strategy: find the largest bright (white/light) rectangular region
-    in the image, which is likely the card against a dark background.
-    Falls back to center-crop if detection fails.
+    Strategy: find contiguous rows/columns where most pixels are bright
+    (the white card against a dark phone background). Uses a two-pass
+    approach to tighten the crop.
     """
     w, h = img.size
-
-    # Convert to grayscale and threshold to find bright regions
     gray = img.convert("L")
-    # Threshold: pixels > 180 are "bright" (card-like)
-    threshold = 180
     pixels = gray.load()
 
-    # Scan rows to find top/bottom bounds of bright region
-    row_brightness = []
+    # Pass 1: find rows where >40% of pixels are bright (card area)
+    threshold = 150
+    min_ratio = 0.4
+
+    row_bright = []
     for y in range(h):
-        bright_count = sum(1 for x in range(w) if pixels[x, y] > threshold)
-        row_brightness.append(bright_count / w)
+        bright = sum(1 for x in range(w) if pixels[x, y] > threshold)
+        row_bright.append(bright / w)
 
-    # Find contiguous region where >30% of row is bright
-    min_ratio = 0.3
-    top, bottom = None, None
-    for y, ratio in enumerate(row_brightness):
-        if ratio > min_ratio:
-            if top is None:
-                top = y
-            bottom = y
+    # Find the longest contiguous run of bright rows
+    best_top, best_bottom, best_len = 0, h, 0
+    run_start = None
+    for y, ratio in enumerate(row_bright):
+        if ratio >= min_ratio:
+            if run_start is None:
+                run_start = y
+        else:
+            if run_start is not None:
+                run_len = y - run_start
+                if run_len > best_len:
+                    best_top, best_bottom, best_len = run_start, y, run_len
+                run_start = None
+    # Handle run that extends to bottom
+    if run_start is not None:
+        run_len = h - run_start
+        if run_len > best_len:
+            best_top, best_bottom = run_start, h
 
-    # Scan columns similarly
-    col_brightness = []
+    # Pass 2: within the found rows, find column bounds
+    col_bright = []
     for x in range(w):
-        bright_count = sum(1 for y in range(h) if pixels[x, y] > threshold)
-        col_brightness.append(bright_count / h)
+        bright = sum(
+            1 for y in range(best_top, best_bottom)
+            if pixels[x, y] > threshold
+        )
+        denom = best_bottom - best_top
+        col_bright.append(bright / denom if denom > 0 else 0)
 
-    left, right = None, None
-    for x, ratio in enumerate(col_brightness):
-        if ratio > min_ratio:
-            if left is None:
-                left = x
-            right = x
+    left, right = 0, w
+    for x, ratio in enumerate(col_bright):
+        if ratio >= min_ratio:
+            left = x
+            break
+    for x in range(w - 1, -1, -1):
+        if col_bright[x] >= min_ratio:
+            right = x + 1
+            break
 
-    # Validate we found something reasonable
-    if top is not None and bottom is not None and left is not None and right is not None:
-        card_h = bottom - top
-        card_w = right - left
-        # Card should be at least 20% of the image in each dimension
-        if card_h > h * 0.15 and card_w > w * 0.15:
-            # Add small padding
-            pad = 10
-            crop_box = (
-                max(0, left - pad),
-                max(0, top - pad),
-                min(w, right + pad),
-                min(h, bottom + pad),
-            )
-            return img.crop(crop_box)
+    # Validate the crop is reasonable (at least 15% of image)
+    card_w = right - left
+    card_h = best_bottom - best_top
+    if card_h > h * 0.15 and card_w > w * 0.15:
+        pad = 5
+        crop_box = (
+            max(0, left - pad),
+            max(0, best_top - pad),
+            min(w, right + pad),
+            min(h, best_bottom + pad),
+        )
+        return img.crop(crop_box)
 
-    # Fallback: center crop to 80% (removes status bars and nav bars)
-    margin_x = int(w * 0.1)
-    margin_y = int(h * 0.1)
-    return img.crop((margin_x, margin_y, w - margin_x, h - margin_y))
+    # Fallback: center crop to 80%
+    mx, my = int(w * 0.1), int(h * 0.1)
+    return img.crop((mx, my, w - mx, h - my))
 
 
 def prepare_image(image_bytes: bytes) -> bytes:
