@@ -80,7 +80,7 @@ def crop_to_card(img: Image.Image) -> Image.Image:
     card_w = right - left
     card_h = best_bottom - best_top
     if card_h > h * 0.15 and card_w > w * 0.15:
-        pad = 5
+        pad = 15
         crop_box = (
             max(0, left - pad),
             max(0, best_top - pad),
@@ -106,8 +106,8 @@ def prepare_image(image_bytes: bytes) -> bytes:
     # Crop to card region
     img = crop_to_card(img)
 
-    # Resize to max 640px wide
-    max_w = 640
+    # Resize to max 1024px wide (enough detail for OCR, not too big for the model)
+    max_w = 1024
     if img.width > max_w:
         ratio = max_w / img.width
         img = img.resize(

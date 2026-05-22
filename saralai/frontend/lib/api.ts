@@ -5,7 +5,11 @@
 
 // Hit FastAPI directly to avoid Next.js proxy timeout (default 30s).
 // Model inference can take 30-60s on constrained hardware.
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// Use the current hostname so it works from both localhost AND phone over LAN.
+const API_BASE = process.env.NEXT_PUBLIC_API_URL
+  ?? (typeof window !== "undefined"
+    ? `http://${window.location.hostname}:8000`
+    : "http://localhost:8000");
 
 /**
  * Extract fields from a document image via SSE stream.

@@ -67,9 +67,8 @@ export default function CameraView({
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
 
-    // Downscale to max 640px wide — smaller image = faster model response
-    // (Gemma vision doesn't need 1280px to read text on a card)
-    const maxW = 640;
+    // Downscale to max 1024px wide — enough detail for OCR
+    const maxW = 1024;
     const scale = Math.min(maxW / video.videoWidth, 1);
     canvas.width = Math.round(video.videoWidth * scale);
     canvas.height = Math.round(video.videoHeight * scale);
